@@ -1,0 +1,267 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  OWNER
+  APPROVER
+  EDITOR
+}
+
+enum ConnectionStatus {
+  CONNECTED
+  EXPIRING
+  REFRESH_FAILED
+  REVOKED
+  DISCONNECTED
+}
+
+enum MediaStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  REJECTED
+  DELETED
+}
+
+enum PinStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  SCHEDULED
+  QUEUED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  CANCELLED
+  CONNECTION_REQUIRED
+  UNKNOWN_RESULT
+}
+
+enum JobStatus {
+  PENDING
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  UNKNOWN_RESULT
+}
+
+model User {
+  id              String            @id @default(uuid()) @db.Uuid
+  email           String            @unique
+  displayName     String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  memberships     WorkspaceMember[]
+  ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
+  sessions        Session[]
+  oauthTransactions OAuthTransaction[]
+}
+
+model Session {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Workspace {
+  id              String                @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String                @unique
+  defaultTimezone String                @default("UTC")
+  ownerUserId     String                @db.Uuid
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  owner           User                  @relation("WorkspaceOwner", fields: [ownerUserId], references: [id])
+  members         WorkspaceMember[]
+  connections     PinterestConnection[]
+  mediaAssets     MediaAsset[]
+  pinDrafts       PinDraft[]
+  auditEvents     AuditEvent[]
+}
+
+model WorkspaceMember {
+  workspaceId String         @db.Uuid
+  userId      String         @db.Uuid
+  role        MembershipRole
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([workspaceId, userId])
+  @@index([userId])
+}
+
+model PinterestConnection {
+  id                    String           @id @default(uuid()) @db.Uuid
+  workspaceId           String           @db.Uuid
+  pinterestUserId       String
+  displayName           String?
+  encryptedAccessToken  Bytes
+  encryptedRefreshToken Bytes?
+  accessTokenExpiresAt  DateTime
+  refreshTokenExpiresAt DateTime?
+  grantedScopes         String[]
+  status                ConnectionStatus @default(CONNECTED)
+  lastRefreshedAt       DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  workspace             Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pinDrafts             PinDraft[]
+  @@unique([workspaceId, pinterestUserId])
+  @@index([status, accessTokenExpiresAt])
+}
+
+model OAuthTransaction {
+  id            String    @id @default(uuid()) @db.Uuid
+  workspaceId   String    @db.Uuid
+  createdByUserId String  @db.Uuid
+  stateHash     String    @unique
+  encryptedPkce Bytes?
+  redirectUri   String
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  createdBy     User      @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([createdByUserId])
+}
+
+model MediaAsset {
+  id               String      @id @default(uuid()) @db.Uuid
+  workspaceId      String      @db.Uuid
+  uploadedByUserId String      @db.Uuid
+  storageKey       String      @unique
+  originalFilename String
+  mimeType         String
+  byteSize         BigInt
+  width            Int?
+  height           Int?
+  durationSeconds  Decimal?    @db.Decimal(10, 3)
+  sha256           String
+  status           MediaStatus @default(UPLOADING)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  deletedAt        DateTime?
+  workspace        Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pinDrafts        PinDraft[]
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, sha256])
+}
+
+model PinDraft {
+  id               String              @id @default(uuid()) @db.Uuid
+  workspaceId      String              @db.Uuid
+  connectionId     String?             @db.Uuid
+  mediaAssetId     String?             @db.Uuid
+  boardId          String?
+  boardSectionId   String?
+  title            String              @default("")
+  description      String              @default("")
+  altText          String?
+  destinationUrl   String?
+  status           PinStatus           @default(DRAFT)
+  scheduledForUtc  DateTime?
+  scheduleTimezone String?
+  version          Int                 @default(1)
+  createdByUserId  String              @db.Uuid
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  connection       PinterestConnection? @relation(fields: [connectionId], references: [id])
+  mediaAsset       MediaAsset?          @relation(fields: [mediaAssetId], references: [id])
+  approvals        PinApproval[]
+  publicationJobs  PublicationJob[]
+  publishedPin     PublishedPin?
+  @@index([workspaceId, createdAt(sort: Desc)])
+  @@index([workspaceId, status, scheduledForUtc])
+}
+
+model PinApproval {
+  id               String   @id @default(uuid()) @db.Uuid
+  pinDraftId       String   @db.Uuid
+  approvedByUserId String   @db.Uuid
+  draftVersion     Int
+  contentSnapshot  Json
+  approvedAt       DateTime @default(now())
+  pinDraft         PinDraft @relation(fields: [pinDraftId], references: [id], onDelete: Cascade)
+  @@unique([pinDraftId, draftVersion])
+}
+
+model PublicationJob {
+  id               String               @id @default(uuid()) @db.Uuid
+  pinDraftId       String               @db.Uuid
+  idempotencyKey   String               @unique
+  runAt            DateTime
+  status           JobStatus            @default(PENDING)
+  lockedAt         DateTime?
+  lockedBy         String?
+  attemptCount     Int                  @default(0)
+  maxAttempts      Int                  @default(5)
+  lastErrorCode    String?
+  lastErrorMessage String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  pinDraft         PinDraft             @relation(fields: [pinDraftId], references: [id], onDelete: Cascade)
+  attempts         PublicationAttempt[]
+  @@index([status, runAt])
+}
+
+model PublicationAttempt {
+  id                 String         @id @default(uuid()) @db.Uuid
+  publicationJobId   String         @db.Uuid
+  attemptNumber      Int
+  startedAt          DateTime       @default(now())
+  finishedAt         DateTime?
+  httpStatus         Int?
+  pinterestRequestId String?
+  outcome            String?
+  errorCode          String?
+  errorMessage       String?
+  publicationJob     PublicationJob @relation(fields: [publicationJobId], references: [id], onDelete: Cascade)
+  @@unique([publicationJobId, attemptNumber])
+}
+
+model PublishedPin {
+  id             String   @id @default(uuid()) @db.Uuid
+  pinDraftId     String   @unique @db.Uuid
+  connectionId   String   @db.Uuid
+  pinterestPinId String
+  pinterestUrl   String?
+  publishedAt    DateTime
+  createdAt      DateTime @default(now())
+  pinDraft       PinDraft @relation(fields: [pinDraftId], references: [id], onDelete: Restrict)
+  @@unique([connectionId, pinterestPinId])
+}
+
+model AuditEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  workspaceId String    @db.Uuid
+  actorUserId String?   @db.Uuid
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  ipHash      String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@index([workspaceId, createdAt(sort: Desc)])
+}

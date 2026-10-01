@@ -166,10 +166,10 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Define publication job and attempt database models
 - [x] Define published Pin result model
 - [x] Define publication statuses
-- [ ] Create typed Pinterest API client package
-- [ ] Implement `POST /v5/pins` for image Pins
-- [ ] Add internal idempotency key generation
-- [ ] Route immediate publishing through the job queue
+- [x] Create typed Pinterest API client package
+- [x] Implement `POST /v5/pins` for image Pins
+- [x] Add internal idempotency key generation
+- [x] Route immediate publishing through the job queue
 - [ ] Lock publication jobs to prevent duplicates
 - [ ] Revalidate approval snapshot before publishing
 - [ ] Store Pinterest Pin ID and safe result metadata

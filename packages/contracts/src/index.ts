@@ -79,3 +79,35 @@ export const ApprovePinSchema = z.object({
   draftVersion: z.number().int().positive(),
 });
 export type ApprovePin = z.infer<typeof ApprovePinSchema>;
+
+export const PinterestImagePinRequestSchema = z.object({
+  boardId: z.string().min(1),
+  boardSectionId: z.string().min(1).optional(),
+  title: z.string().min(1).max(100),
+  description: z.string().min(1).max(800),
+  altText: z.string().min(1).max(500),
+  destinationUrl: z
+    .url()
+    .refine(
+      (value) => ["http:", "https:"].includes(new URL(value).protocol),
+      "Only HTTP and HTTPS URLs are allowed",
+    )
+    .optional(),
+  mediaUrl: z
+    .url()
+    .refine(
+      (value) => ["http:", "https:"].includes(new URL(value).protocol),
+      "Media URL must use HTTP or HTTPS",
+    ),
+});
+export type PinterestImagePinRequest = z.infer<
+  typeof PinterestImagePinRequestSchema
+>;
+
+export const PinterestPinResultSchema = z.object({
+  id: z.string().min(1),
+  link: z.string().url().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+export type PinterestPinResult = z.infer<typeof PinterestPinResultSchema>;

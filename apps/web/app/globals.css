@@ -1770,3 +1770,68 @@ h1 {
   border-radius: 9px;
   font-size: 0.78rem;
 }
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: var(--page-bg, #f6f7fb);
+}
+.auth-card {
+  width: min(100%, 430px);
+  display: grid;
+  gap: 1rem;
+  padding: 2rem;
+  border: 1px solid #dde1ea;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 18px 45px rgb(17 24 39 / 8%);
+}
+.auth-card label:not(.checkbox-row) {
+  display: grid;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+.auth-card input[type="email"] {
+  padding: 0.8rem;
+  border: 1px solid #cfd4df;
+  border-radius: 10px;
+}
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+.notification-preference {
+  margin-bottom: 1.25rem;
+}
+.notification-list {
+  display: grid;
+  gap: 0.75rem;
+}
+.notification-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid #e0e3eb;
+  border-radius: 14px;
+  background: white;
+}
+.notification-item.unread {
+  border-left: 4px solid #cc173f;
+}
+.notification-item p {
+  margin: 0.35rem 0;
+  color: #565d6d;
+}
+.notification-item small {
+  color: #777f90;
+}
+.media-preview {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #eef0f5;
+}

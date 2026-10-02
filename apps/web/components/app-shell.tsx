@@ -169,13 +169,13 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
             <span className="search-shortcut">Ctrl K</span>
           </label>
           <div className="topbar-actions">
-            <button
+            <Link
               className="icon-button notification-button"
-              type="button"
+              href="/notifications"
               aria-label="Notifications"
             >
               <Bell size={18} aria-hidden="true" />
-            </button>
+            </Link>
             <Link
               className="button button-secondary desktop-action"
               href="/pins/new"

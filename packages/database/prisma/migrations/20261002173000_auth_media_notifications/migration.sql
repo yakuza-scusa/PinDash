@@ -1,0 +1,14 @@
+CREATE TYPE "MalwareScanStatus" AS ENUM ('PENDING', 'CLEAN', 'INFECTED', 'ERROR');
+CREATE TYPE "NotificationType" AS ENUM ('PUBLISHED', 'FAILED', 'CONNECTION_REVOKED', 'ACTION_REQUIRED');
+ALTER TABLE "User" ADD COLUMN "legalAcceptedAt" TIMESTAMP(3), ADD COLUMN "notifyInApp" BOOLEAN NOT NULL DEFAULT true, ADD COLUMN "notifyByEmail" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "MediaAsset" ADD COLUMN "malwareScanStatus" "MalwareScanStatus" NOT NULL DEFAULT 'PENDING', ADD COLUMN "thumbnailStorageKey" TEXT;
+CREATE UNIQUE INDEX "MediaAsset_thumbnailStorageKey_key" ON "MediaAsset"("thumbnailStorageKey");
+CREATE TABLE "PasswordlessToken" ("id" UUID NOT NULL, "userId" UUID NOT NULL, "tokenHash" TEXT NOT NULL, "expiresAt" TIMESTAMP(3) NOT NULL, "consumedAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "PasswordlessToken_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "PasswordlessToken_tokenHash_key" ON "PasswordlessToken"("tokenHash");
+CREATE INDEX "PasswordlessToken_expiresAt_idx" ON "PasswordlessToken"("expiresAt");
+ALTER TABLE "PasswordlessToken" ADD CONSTRAINT "PasswordlessToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+CREATE TABLE "Notification" ("id" UUID NOT NULL, "workspaceId" UUID NOT NULL, "userId" UUID NOT NULL, "type" "NotificationType" NOT NULL, "title" TEXT NOT NULL, "message" TEXT NOT NULL, "entityType" TEXT, "entityId" TEXT, "readAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "Notification_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "Notification_userId_readAt_createdAt_idx" ON "Notification"("userId", "readAt", "createdAt" DESC);
+CREATE INDEX "Notification_workspaceId_createdAt_idx" ON "Notification"("workspaceId", "createdAt" DESC);
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Notification" ADD CONSTRAINT "Notification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

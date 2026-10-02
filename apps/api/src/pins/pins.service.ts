@@ -75,22 +75,34 @@ export class PinsService {
       input.connectionId,
       input.mediaAssetId,
     );
-    return database.pinDraft.create({
-      data: {
-        workspaceId: input.workspaceId,
-        createdByUserId: userId,
-        connectionId: input.connectionId ?? null,
-        mediaAssetId: input.mediaAssetId ?? null,
-        boardId: input.boardId ?? null,
-        title: input.title,
-        description: input.description,
-        altText: input.altText ?? null,
-        destinationUrl: input.destinationUrl ?? null,
-        scheduledForUtc: input.scheduledForUtc
-          ? new Date(input.scheduledForUtc)
-          : null,
-        scheduleTimezone: input.scheduleTimezone ?? null,
-      },
+    return database.$transaction(async (tx) => {
+      const draft = await tx.pinDraft.create({
+        data: {
+          workspaceId: input.workspaceId,
+          createdByUserId: userId,
+          connectionId: input.connectionId ?? null,
+          mediaAssetId: input.mediaAssetId ?? null,
+          boardId: input.boardId ?? null,
+          title: input.title,
+          description: input.description,
+          altText: input.altText ?? null,
+          destinationUrl: input.destinationUrl ?? null,
+          scheduledForUtc: input.scheduledForUtc
+            ? new Date(input.scheduledForUtc)
+            : null,
+          scheduleTimezone: input.scheduleTimezone ?? null,
+        },
+      });
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: input.workspaceId,
+          actorUserId: userId,
+          action: "pin.draft_created",
+          entityType: "PinDraft",
+          entityId: draft.id,
+        },
+      });
+      return draft;
     });
   }
 
@@ -321,7 +333,18 @@ export class PinsService {
       data.scheduleTimezone = input.scheduleTimezone ?? null;
     return database.$transaction(async (tx) => {
       await tx.pinApproval.deleteMany({ where: { pinDraftId: id } });
-      return tx.pinDraft.update({ where: { id }, data });
+      const updated = await tx.pinDraft.update({ where: { id }, data });
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: draft.workspaceId,
+          actorUserId: userId,
+          action: "pin.draft_updated",
+          entityType: "PinDraft",
+          entityId: id,
+          metadata: { version: updated.version },
+        },
+      });
+      return updated;
     });
   }
 
@@ -353,7 +376,18 @@ export class PinsService {
     if (!draft) throw new NotFoundException("Draft not found");
     if (draft.status === PinStatus.PUBLISHED)
       throw new BadRequestException("Published Pins cannot be deleted");
-    await database.pinDraft.delete({ where: { id } });
+    await database.$transaction(async (tx) => {
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: draft.workspaceId,
+          actorUserId: userId,
+          action: "pin.draft_deleted",
+          entityType: "PinDraft",
+          entityId: id,
+        },
+      });
+      await tx.pinDraft.delete({ where: { id } });
+    });
     return { deleted: true };
   }
 

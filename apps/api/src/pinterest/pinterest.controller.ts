@@ -27,9 +27,13 @@ export class PinterestController {
 
   @Get("connections/:id/boards")
   @UseGuards(SessionGuard)
-  boards(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+  boards(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Query("bookmark") bookmark?: string,
+  ) {
     if (!request.user) throw new UnauthorizedException();
-    return this.oauth.listBoards(request.user.id, id);
+    return this.oauth.listBoards(request.user.id, id, bookmark);
   }
 
   @Delete("connections/:id")

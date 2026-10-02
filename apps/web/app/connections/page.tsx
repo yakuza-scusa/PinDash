@@ -76,6 +76,17 @@ export default function ConnectionsPage() {
     // Initial synchronization with the external session API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
+    const oauthStatus = new URLSearchParams(window.location.search).get(
+      "status",
+    );
+    if (oauthStatus === "denied")
+      setError(
+        "Pinterest authorization was denied. No credentials were stored.",
+      );
+    if (oauthStatus === "invalid")
+      setError(
+        "The Pinterest authorization link was invalid, expired, or already used.",
+      );
   }, [load]);
 
   async function createDemoSession() {
@@ -222,8 +233,14 @@ export default function ConnectionsPage() {
                         {connection.grantedScopes.join(" · ")}
                       </span>
                     </span>
-                    <span className="connected-badge">
-                      <CheckCircle2 size={14} />{" "}
+                    <span
+                      className={`connected-badge ${connection.status.toLowerCase()}`}
+                    >
+                      {connection.status === "CONNECTED" ? (
+                        <CheckCircle2 size={14} />
+                      ) : (
+                        <AlertCircle size={14} />
+                      )}{" "}
                       {connection.status.toLowerCase().replaceAll("_", " ")}
                     </span>
                     {connection.status !== "DISCONNECTED" ? (

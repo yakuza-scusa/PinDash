@@ -5,6 +5,7 @@ import {
 } from "@nestjs/platform-fastify";
 import { AppModule } from "./app.module";
 import { correlationId, safeRequestPath } from "./observability";
+import { csrfAllowed, RequestRateLimiter } from "./request-security";
 
 async function bootstrap(): Promise<void> {
   const trustedProxies = (process.env.TRUST_PROXY ?? "")
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
   });
 
   const server = app.getHttpAdapter().getInstance();
+  const mutationLimiter = new RequestRateLimiter();
   server.addHook(
     "onRequest",
     (
@@ -33,8 +35,14 @@ async function bootstrap(): Promise<void> {
         headers: Record<string, unknown>;
         correlationId?: string;
         startedAt?: number;
+        method: string;
+        url: string;
+        ip: string;
       },
-      reply: { header(name: string, value: string): void },
+      reply: {
+        header(name: string, value: string): void;
+        code(status: number): { send(body: unknown): void };
+      },
       done: () => void,
     ) => {
       request.correlationId = correlationId(
@@ -42,6 +50,27 @@ async function bootstrap(): Promise<void> {
       );
       request.startedAt = Date.now();
       reply.header("x-correlation-id", request.correlationId);
+      const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
+      if (
+        !csrfAllowed({
+          method: request.method,
+          url: request.url,
+          origin: request.headers.origin as string | undefined,
+          cookie: request.headers.cookie as string | undefined,
+          webUrl,
+          cookieName: process.env.SESSION_COOKIE_NAME,
+        })
+      ) {
+        reply.code(403).send({ message: "Cross-origin mutation rejected" });
+        return;
+      }
+      if (
+        ["POST", "PUT", "PATCH", "DELETE"].includes(request.method) &&
+        !mutationLimiter.allow(request.ip)
+      ) {
+        reply.code(429).send({ message: "Too many requests" });
+        return;
+      }
       done();
     },
   );

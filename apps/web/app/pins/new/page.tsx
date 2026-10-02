@@ -14,7 +14,7 @@ type Connection = {
   displayName: string | null;
   pinterestUserId: string;
 };
-type Board = { id: string; name: string };
+type Board = { id: string; name: string; privacy?: string };
 type Session = { user: { workspaces: Array<{ id: string }> } };
 type Draft = {
   id: string;
@@ -40,6 +40,9 @@ export default function NewPinPage() {
   const [session, setSession] = useState<Session | null>(null),
     [connections, setConnections] = useState<Connection[]>([]),
     [boards, setBoards] = useState<Board[]>([]);
+  const [boardSearch, setBoardSearch] = useState(""),
+    [boardBookmark, setBoardBookmark] = useState<string | null>(null),
+    [loadingBoards, setLoadingBoards] = useState(false);
   const [connectionId, setConnectionId] = useState(""),
     [boardId, setBoardId] = useState(""),
     [title, setTitle] = useState(""),
@@ -62,7 +65,6 @@ export default function NewPinPage() {
     [previewUrl, setPreviewUrl] = useState<string | null>(null),
     [uploading, setUploading] = useState(false);
   const hydrated = useRef(false);
-  const suppressLoadedDraftAutosave = useRef(false);
   useEffect(() => {
     async function load() {
       try {
@@ -107,7 +109,6 @@ export default function NewPinPage() {
               setTiming("scheduled");
               setScheduledLocal(toLocalDateTime(draft.scheduledForUtc));
             }
-            suppressLoadedDraftAutosave.current = true;
             setStatus("Draft loaded. Changes save automatically.");
           }
         } else {
@@ -127,21 +128,33 @@ export default function NewPinPage() {
     }
     void load();
   }, []);
-  async function selectConnection(id: string) {
-    setConnectionId(id);
-    setBoardId("");
-    setBoards([]);
+  async function selectConnection(id: string, bookmark?: string) {
+    if (!bookmark) {
+      setConnectionId(id);
+      setBoardId("");
+      setBoards([]);
+      setBoardBookmark(null);
+    }
     if (!id) return;
+    setLoadingBoards(true);
     const response = await fetch(
-      `${API_URL}/pinterest/connections/${id}/boards`,
+      `${API_URL}/pinterest/connections/${id}/boards${bookmark ? `?bookmark=${encodeURIComponent(bookmark)}` : ""}`,
       { credentials: "include" },
     );
     if (!response.ok) {
       setStatus("Boards could not be loaded. Reconnect Pinterest and retry.");
+      setLoadingBoards(false);
       return null;
     }
-    const payload = (await response.json()) as { items: Board[] };
-    setBoards(payload.items);
+    const payload = (await response.json()) as {
+      items: Board[];
+      bookmark?: string | null;
+    };
+    setBoards((current) =>
+      bookmark ? [...current, ...payload.items] : payload.items,
+    );
+    setBoardBookmark(payload.bookmark ?? null);
+    setLoadingBoards(false);
     setStatus("Boards loaded from Pinterest.");
   }
   async function saveDraft() {
@@ -203,10 +216,6 @@ export default function NewPinPage() {
   }
   useEffect(() => {
     if (!hydrated.current || !session) return;
-    if (suppressLoadedDraftAutosave.current) {
-      suppressLoadedDraftAutosave.current = false;
-      return;
-    }
     const timer = window.setTimeout(async () => {
       const workspaceId = session.user.workspaces[0]?.id;
       if (!workspaceId) return;
@@ -428,19 +437,47 @@ export default function NewPinPage() {
               </label>
               <label>
                 Pinterest board
+                <input
+                  type="search"
+                  value={boardSearch}
+                  onChange={(event) => setBoardSearch(event.target.value)}
+                  placeholder="Search loaded boards"
+                  disabled={!connectionId}
+                />
                 <select
                   value={boardId}
                   onChange={(e) => setBoardId(e.target.value)}
                   disabled={!connectionId}
                 >
                   <option value="">Select a board</option>
-                  {boards.map((board) => (
-                    <option value={board.id} key={board.id}>
-                      {board.name}
-                    </option>
-                  ))}
+                  {boards
+                    .filter((board) =>
+                      board.name
+                        .toLowerCase()
+                        .includes(boardSearch.toLowerCase()),
+                    )
+                    .map((board) => (
+                      <option value={board.id} key={board.id}>
+                        {board.name}
+                        {board.privacy
+                          ? ` · ${board.privacy.toLowerCase()}`
+                          : ""}
+                      </option>
+                    ))}
                 </select>
               </label>
+              {boardBookmark ? (
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  disabled={loadingBoards}
+                  onClick={() =>
+                    void selectConnection(connectionId, boardBookmark)
+                  }
+                >
+                  {loadingBoards ? "Loading…" : "Load more boards"}
+                </button>
+              ) : null}
               <label>
                 Destination URL
                 <input

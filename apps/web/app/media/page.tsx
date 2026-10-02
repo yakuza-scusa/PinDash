@@ -1,5 +1,5 @@
 "use client";
-import { Image as ImageIcon, Upload } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
@@ -66,6 +66,19 @@ export default function MediaPage() {
       setUploading(false);
     }
   }
+  async function remove(id: string) {
+    const response = await fetch(`${API_URL}/media/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const result = (await response.json()) as { message?: string };
+      setMessage(result.message ?? "Media could not be deleted.");
+      return;
+    }
+    setAssets((current) => current.filter((asset) => asset.id !== id));
+    setMessage("Unused media deleted.");
+  }
   const picker = (
     <label className="button button-primary file-button">
       <Upload size={17} aria-hidden="true" />
@@ -106,9 +119,13 @@ export default function MediaPage() {
             <div className="media-grid">
               {assets.map((asset) => (
                 <article className="media-card" key={asset.id}>
-                  <div className="media-placeholder">
-                    <ImageIcon size={28} aria-hidden="true" />
-                  </div>
+                  {/* Authenticated same-origin preview; the API checks workspace membership. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    className="media-preview"
+                    src={`${API_URL}/media/${asset.id}/preview`}
+                    alt=""
+                  />
                   <strong>{asset.originalFilename}</strong>
                   <span>
                     {asset.width ?? "—"} × {asset.height ?? "—"} ·{" "}
@@ -117,6 +134,13 @@ export default function MediaPage() {
                   <span className={`status-pill ${asset.status.toLowerCase()}`}>
                     {asset.status.toLowerCase()}
                   </span>
+                  <button
+                    className="button button-ghost"
+                    type="button"
+                    onClick={() => void remove(asset.id)}
+                  >
+                    <Trash2 size={15} aria-hidden="true" /> Delete
+                  </button>
                 </article>
               ))}
             </div>

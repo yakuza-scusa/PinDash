@@ -58,13 +58,13 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Add logout endpoint
 - [x] Add development-only owner/workspace bootstrap
 - [x] Disable development sign-in in production
-- [ ] Select production identity provider or passwordless email service
-- [ ] Implement production sign-in and callback flow
-- [ ] Implement email verification
-- [ ] Add session rotation after authentication
-- [ ] Add CSRF protection to cookie-authenticated mutations
-- [ ] Add per-IP and per-user authentication rate limits
-- [ ] Add first-run onboarding and legal acceptance
+- [x] Select production identity provider or passwordless email service
+- [x] Implement production sign-in and callback flow
+- [x] Implement email verification
+- [x] Add session rotation after authentication
+- [x] Add CSRF protection to cookie-authenticated mutations
+- [x] Add per-IP and per-user authentication rate limits
+- [x] Add first-run onboarding and legal acceptance
 
 ## 4. Pinterest OAuth and connections
 
@@ -88,8 +88,8 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Handle refresh-token race conditions atomically
 - [x] Add disconnect endpoint and confirmation dialog
 - [x] Remove encrypted credentials on disconnect
-- [ ] Add revoked, expiring, and refresh-failed UI states
-- [ ] Add OAuth success, denial, invalid-state, expired-state, and reused-state tests
+- [x] Add revoked, expiring, and refresh-failed UI states
+- [x] Add OAuth success, denial, invalid-state, expired-state, and reused-state tests
 
 ## 5. Pinterest boards
 
@@ -99,11 +99,11 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Load live boards in the Pin composer
 - [x] Display Pinterest connection selector
 - [x] Display Pinterest board selector
-- [ ] Add Pinterest bookmark pagination
-- [ ] Add board search and filtering
-- [ ] Display board privacy/type metadata
-- [ ] Add short-lived board caching
-- [ ] Handle Pinterest 401, 403, 429, and 5xx responses
+- [x] Add Pinterest bookmark pagination
+- [x] Add board search and filtering
+- [x] Display board privacy/type metadata
+- [x] Add short-lived board caching
+- [x] Handle Pinterest 401, 403, 429, and 5xx responses
 - [ ] Test board loading with the real Trial account
 
 ## 6. Pin drafts and composer
@@ -141,11 +141,11 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Validate supported MIME types and maximum size
 - [x] Validate image dimensions
 - [x] Strip EXIF metadata where practical
-- [ ] Add malware scanning state
-- [ ] Generate safe previews and thumbnails
+- [x] Add malware scanning state
+- [x] Generate safe previews and thumbnails
 - [x] Persist completed media assets
 - [x] Connect media library page to the API
-- [ ] Add unused-media deletion flow
+- [x] Add unused-media deletion flow
 - [x] Add short-lived Pinterest retrieval URLs
 
 ## 8. Approval and confirmation
@@ -202,15 +202,15 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 ## 11. Notifications and audit
 
 - [x] Define audit-event database model
-- [ ] Define notification database model
-- [ ] Record authentication audit events
-- [ ] Record connection and disconnection audit events
-- [ ] Record draft, approval, scheduling, and publishing audit events
-- [ ] Add in-app notification center
-- [ ] Notify on published, failed, revoked, and action-required states
-- [ ] Add notification preferences
+- [x] Define notification database model
+- [x] Record authentication audit events
+- [x] Record connection and disconnection audit events
+- [x] Record draft, approval, scheduling, and publishing audit events
+- [x] Add in-app notification center
+- [x] Notify on published, failed, revoked, and action-required states
+- [x] Add notification preferences
 - [ ] Add optional transactional failure email
-- [ ] Redact tokens, authorization codes, and signed URLs from logs
+- [x] Redact tokens, authorization codes, and signed URLs from logs
 
 ## 12. Public pages and compliance
 
@@ -267,7 +267,7 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Install/start PostgreSQL and apply the initial schema
 - [ ] Configure Pinterest Trial credentials
 - [ ] Test real OAuth and live board loading
-- [ ] Implement secure image upload
+- [x] Implement secure image upload
 - [ ] Build explicit review and immediate Pin publishing
 
 ## Validation record

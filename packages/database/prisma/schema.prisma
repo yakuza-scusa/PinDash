@@ -29,6 +29,20 @@ enum MediaStatus {
   DELETED
 }
 
+enum MalwareScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  ERROR
+}
+
+enum NotificationType {
+  PUBLISHED
+  FAILED
+  CONNECTION_REVOKED
+  ACTION_REQUIRED
+}
+
 enum PinStatus {
   DRAFT
   AWAITING_APPROVAL
@@ -65,6 +79,23 @@ model User {
   ownedWorkspaces Workspace[]       @relation("WorkspaceOwner")
   sessions        Session[]
   oauthTransactions OAuthTransaction[]
+  passwordlessTokens PasswordlessToken[]
+  notifications     Notification[]
+  legalAcceptedAt   DateTime?
+  notifyInApp       Boolean           @default(true)
+  notifyByEmail     Boolean           @default(false)
+}
+
+model PasswordlessToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model Session {
@@ -94,6 +125,7 @@ model Workspace {
   mediaAssets     MediaAsset[]
   pinDrafts       PinDraft[]
   auditEvents     AuditEvent[]
+  notifications   Notification[]
 }
 
 model WorkspaceMember {
@@ -157,6 +189,8 @@ model MediaAsset {
   durationSeconds  Decimal?    @db.Decimal(10, 3)
   sha256           String
   status           MediaStatus @default(UPLOADING)
+  malwareScanStatus MalwareScanStatus @default(PENDING)
+  thumbnailStorageKey String?   @unique
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   deletedAt        DateTime?
@@ -164,6 +198,24 @@ model MediaAsset {
   pinDrafts        PinDraft[]
   @@index([workspaceId, createdAt(sort: Desc)])
   @@index([workspaceId, sha256])
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  workspaceId String           @db.Uuid
+  userId      String           @db.Uuid
+  type        NotificationType
+  title       String
+  message     String
+  entityType  String?
+  entityId    String?
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([workspaceId, createdAt(sort: Desc)])
 }
 
 model PinDraft {

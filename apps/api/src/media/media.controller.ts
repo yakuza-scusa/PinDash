@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Query,
   Param,
@@ -53,6 +54,23 @@ export class MediaController {
   @Post(":id/complete")
   complete(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     return this.media.completeUpload(this.userId(request), id);
+  }
+
+  @Get(":id/preview")
+  async preview(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const preview = await this.media.preview(this.userId(request), id);
+    reply.header("Content-Type", preview.mimeType);
+    reply.header("Cache-Control", "private, max-age=300");
+    return reply.send(preview.body);
+  }
+
+  @Delete(":id")
+  remove(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+    return this.media.remove(this.userId(request), id);
   }
 }
 

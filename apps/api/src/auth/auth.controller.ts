@@ -1,14 +1,18 @@
 import {
+  BadRequestException,
+  Body,
   Controller,
   Delete,
   Get,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
+import type { FastifyRequest } from "fastify";
 import { readCookie, type AuthenticatedRequest } from "./auth.types";
 import { SessionGuard } from "./session.guard";
 import { SessionService } from "./session.service";
@@ -38,6 +42,32 @@ export class AuthController {
     return { authenticated: true, user: request.user };
   }
 
+  @Post("passwordless/request")
+  requestPasswordlessLink(
+    @Req() request: FastifyRequest,
+    @Body() body: { email?: unknown; legalAccepted?: unknown },
+  ) {
+    if (typeof body?.email !== "string")
+      throw new BadRequestException("Email is required");
+    return this.sessions.requestPasswordlessLink(
+      body.email,
+      body.legalAccepted === true,
+      request.ip,
+    );
+  }
+
+  @Get("passwordless/callback")
+  async passwordlessCallback(
+    @Query("token") token: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const session = await this.sessions.consumePasswordlessToken(token ?? "");
+    this.setSessionCookie(reply, session);
+    return reply.redirect(
+      `${process.env.WEB_URL ?? "http://localhost:3000"}/connections?status=signed-in`,
+    );
+  }
+
   @Delete("session")
   async deleteSession(
     @Req() request: AuthenticatedRequest,
@@ -50,5 +80,17 @@ export class AuthController {
       `${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
     );
     return { authenticated: false };
+  }
+
+  private setSessionCookie(
+    reply: FastifyReply,
+    session: { token: string; expiresAt: Date },
+  ): void {
+    const name = process.env.SESSION_COOKIE_NAME ?? "pindash_session";
+    const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+    reply.header(
+      "Set-Cookie",
+      `${name}=${encodeURIComponent(session.token)}; Path=/; HttpOnly; SameSite=Lax; Expires=${session.expiresAt.toUTCString()}${secure}`,
+    );
   }
 }

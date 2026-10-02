@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
 
-const { transaction, publicationFindFirst, publicationUpdate } = vi.hoisted(
-  () => ({
-    transaction: vi.fn(),
-    publicationFindFirst: vi.fn(),
-    publicationUpdate: vi.fn(),
-  }),
-);
+const {
+  transaction,
+  publicationFindFirst,
+  publicationUpdate,
+  memberFindMany,
+  notificationCreateMany,
+} = vi.hoisted(() => ({
+  transaction: vi.fn(),
+  publicationFindFirst: vi.fn(),
+  publicationUpdate: vi.fn(),
+  memberFindMany: vi.fn().mockResolvedValue([]),
+  notificationCreateMany: vi.fn(),
+}));
 vi.mock("@pindash/database", () => ({
   database: {
     $transaction: transaction,
@@ -15,6 +21,8 @@ vi.mock("@pindash/database", () => ({
       findFirst: publicationFindFirst,
       update: publicationUpdate,
     },
+    workspaceMember: { findMany: memberFindMany },
+    notification: { createMany: notificationCreateMany },
   },
   JobStatus: {
     PENDING: "PENDING",

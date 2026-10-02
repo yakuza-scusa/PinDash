@@ -16,6 +16,7 @@ import {
 } from "../pinterest/pinterest-api.client";
 import { PinterestOAuthService } from "../pinterest/pinterest-oauth.service";
 import { PublishQueueService } from "./publish-queue.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 @Injectable()
 export class PublishingService {
@@ -258,6 +259,14 @@ export class PublishingService {
           },
         });
       });
+      await NotificationsService.notifyWorkspace({
+        workspaceId: snapshot.workspaceId,
+        type: "PUBLISHED",
+        title: "Pin published",
+        message: `“${snapshot.title}” is now live on Pinterest.`,
+        entityType: "PublishedPin",
+        entityId: confirmed.id,
+      });
       return { pinterestPinId: confirmed.id, pinterestUrl, publishedAt };
     } catch (error) {
       const pinterestError =
@@ -306,7 +315,31 @@ export class PublishingService {
           where: { id: job.pinDraftId },
           data: { status: pinStatus },
         });
+        await tx.auditEvent.create({
+          data: {
+            workspaceId: snapshot.workspaceId,
+            action: retryable
+              ? "pin.publication_retrying"
+              : "pin.publication_failed",
+            entityType: "PublicationJob",
+            entityId: job.id,
+            metadata: { code, pinDraftId: job.pinDraftId },
+          },
+        });
       });
+      if (!retryable) {
+        await NotificationsService.notifyWorkspace({
+          workspaceId: snapshot.workspaceId,
+          type: code === "authentication" ? "ACTION_REQUIRED" : "FAILED",
+          title:
+            code === "authentication"
+              ? "Reconnect Pinterest"
+              : "Pin publication failed",
+          message: safeMessage,
+          entityType: "PublicationJob",
+          entityId: job.id,
+        });
+      }
       if (retryable)
         throw new ServiceUnavailableException({
           message: safeMessage,

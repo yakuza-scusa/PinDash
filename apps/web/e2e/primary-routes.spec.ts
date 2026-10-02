@@ -121,6 +121,7 @@ test("an existing draft loads and autosaves edits", async ({ page }) => {
   await page.goto("/pins/new?draft=1");
   const title = page.getByRole("textbox", { name: /Title/ });
   await expect(title).toHaveValue("Home office lighting ideas");
+  await expect(page.getByRole("status")).toContainText("Draft loaded");
   const autosave = page.waitForRequest(
     (request) =>
       request.url().endsWith("/api/v1/pins/1") && request.method() === "PATCH",
@@ -163,11 +164,22 @@ test("review requires explicit confirmation before approval", async ({
       body: JSON.stringify({ status: "APPROVED" }),
     }),
   );
+  await page.route("**/api/v1/pins/1/publish", (route) =>
+    route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({
+        publicationJobId: "job-1",
+        pinDraftId: "1",
+        status: "QUEUED",
+      }),
+    }),
+  );
   await page.goto("/pins/1/review");
-  const approve = page.getByRole("button", { name: "Approve this Pin" });
+  const approve = page.getByRole("button", { name: "Approve and publish" });
   await expect(approve).toBeDisabled();
   await page.getByRole("checkbox").check();
   await expect(approve).toBeEnabled();
   await approve.click();
-  await expect(page.getByRole("status")).toContainText("Pin approved");
+  await expect(page).toHaveURL(/\/pins\/1\/publication$/);
 });

@@ -9,6 +9,7 @@ import { database, MediaStatus } from "@pindash/database";
 import type { CreateUploadIntent } from "@pindash/contracts";
 import {
   GetObjectCommand,
+  DeleteObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -45,6 +46,11 @@ function detectMime(bytes: Uint8Array): string | null {
   return null;
 }
 
+export function containsMalwareSignature(bytes: Uint8Array): boolean {
+  const sample = Buffer.from(bytes).toString("utf8");
+  return sample.includes("EICAR-STANDARD-ANTIVIRUS-TEST-FILE");
+}
+
 @Injectable()
 export class MediaService {
   private readonly bucket = process.env.S3_BUCKET ?? "pindash-media";
@@ -78,6 +84,7 @@ export class MediaService {
         width: true,
         height: true,
         status: true,
+        malwareScanStatus: true,
         createdAt: true,
       },
     });
@@ -187,6 +194,10 @@ export class MediaService {
     if (!asset) throw new NotFoundException("Media asset not found");
     if (asset.status !== MediaStatus.UPLOADING)
       throw new BadRequestException("Upload is not awaiting completion");
+    await database.mediaAsset.update({
+      where: { id },
+      data: { status: MediaStatus.PROCESSING, malwareScanStatus: "PENDING" },
+    });
     try {
       const object = await this.s3.send(
         new GetObjectCommand({ Bucket: this.bucket, Key: asset.storageKey }),
@@ -194,6 +205,13 @@ export class MediaService {
       const bytes = new Uint8Array(await object.Body!.transformToByteArray());
       if (bytes.byteLength > MAX_BYTES)
         throw new BadRequestException("File exceeds 10 MB");
+      if (containsMalwareSignature(bytes)) {
+        await database.mediaAsset.update({
+          where: { id },
+          data: { status: MediaStatus.REJECTED, malwareScanStatus: "INFECTED" },
+        });
+        throw new BadRequestException("File failed malware scanning");
+      }
       const detectedMime = detectMime(bytes);
       if (
         !detectedMime ||
@@ -225,12 +243,30 @@ export class MediaService {
           : detectedMime === "image/png"
             ? await image.png().toBuffer()
             : await image.webp({ quality: 92 }).toBuffer();
+      const thumbnail = await sharp(sanitized)
+        .resize({
+          width: 320,
+          height: 320,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 82 })
+        .toBuffer();
+      const thumbnailStorageKey = `${asset.storageKey}.thumb.webp`;
       await this.s3.send(
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: asset.storageKey,
           Body: sanitized,
           ContentType: detectedMime,
+        }),
+      );
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: thumbnailStorageKey,
+          Body: thumbnail,
+          ContentType: "image/webp",
         }),
       );
       const updated = await database.mediaAsset.update({
@@ -242,6 +278,8 @@ export class MediaService {
           height: metadata.height,
           sha256: createHash("sha256").update(sanitized).digest("hex"),
           status: MediaStatus.READY,
+          malwareScanStatus: "CLEAN",
+          thumbnailStorageKey,
         },
         select: {
           id: true,
@@ -257,10 +295,69 @@ export class MediaService {
     } catch (error) {
       await database.mediaAsset.update({
         where: { id },
-        data: { status: MediaStatus.REJECTED },
+        data: {
+          status: MediaStatus.REJECTED,
+          ...(error instanceof BadRequestException
+            ? {}
+            : { malwareScanStatus: "ERROR" as const }),
+        },
       });
       if (error instanceof BadRequestException) throw error;
       throw new BadRequestException("Uploaded object could not be verified");
     }
+  }
+
+  async preview(userId: string, id: string) {
+    const asset = await database.mediaAsset.findFirst({
+      where: {
+        id,
+        workspace: { members: { some: { userId } } },
+        deletedAt: null,
+      },
+      select: { thumbnailStorageKey: true, storageKey: true },
+    });
+    if (!asset) throw new NotFoundException("Media asset not found");
+    const key = asset.thumbnailStorageKey ?? asset.storageKey;
+    const object = await this.s3.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    if (!object.Body) throw new NotFoundException("Preview is unavailable");
+    return {
+      body: object.Body,
+      mimeType: asset.thumbnailStorageKey
+        ? "image/webp"
+        : "application/octet-stream",
+    };
+  }
+
+  async remove(userId: string, id: string) {
+    const asset = await database.mediaAsset.findFirst({
+      where: {
+        id,
+        workspace: { members: { some: { userId } } },
+        deletedAt: null,
+      },
+      select: { id: true, storageKey: true, thumbnailStorageKey: true },
+    });
+    if (!asset) throw new NotFoundException("Media asset not found");
+    const inUse = await database.pinDraft.count({
+      where: { mediaAssetId: id, status: { notIn: ["CANCELLED", "FAILED"] } },
+    });
+    if (inUse) throw new BadRequestException("Media is used by an active Pin");
+    await this.s3.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: asset.storageKey }),
+    );
+    if (asset.thumbnailStorageKey)
+      await this.s3.send(
+        new DeleteObjectCommand({
+          Bucket: this.bucket,
+          Key: asset.thumbnailStorageKey,
+        }),
+      );
+    await database.mediaAsset.update({
+      where: { id },
+      data: { status: MediaStatus.DELETED, deletedAt: new Date() },
+    });
+    return { deleted: true };
   }
 }

@@ -6,12 +6,16 @@ const {
   connectionUpdateMany,
   connectionUpdate,
   transaction,
+  memberFindMany,
+  notificationCreateMany,
 } = vi.hoisted(() => ({
   connectionFindUnique: vi.fn(),
   connectionFindFirst: vi.fn(),
   connectionUpdateMany: vi.fn(),
   connectionUpdate: vi.fn(),
   transaction: vi.fn(),
+  memberFindMany: vi.fn().mockResolvedValue([]),
+  notificationCreateMany: vi.fn(),
 }));
 
 vi.mock("@pindash/database", () => ({
@@ -23,6 +27,8 @@ vi.mock("@pindash/database", () => ({
       update: connectionUpdate,
     },
     $transaction: transaction,
+    workspaceMember: { findMany: memberFindMany },
+    notification: { createMany: notificationCreateMany },
   },
   ConnectionStatus: {
     CONNECTED: "CONNECTED",

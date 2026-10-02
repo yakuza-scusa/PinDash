@@ -5,6 +5,7 @@ import { PinterestModule } from "./pinterest/pinterest.module";
 import { PinsModule } from "./pins/pins.module";
 import { MediaModule } from "./media/media.module";
 import { PublishingModule } from "./publishing/publishing.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { PublishingModule } from "./publishing/publishing.module";
     PinsModule,
     MediaModule,
     PublishingModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
 })

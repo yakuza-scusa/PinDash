@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { database, PinStatus, type Prisma } from "@pindash/database";
-import type {
-  ApprovePin,
-  SavePinDraft,
-  UpdatePinDraft,
+import {
+  ApprovedPinSnapshotSchema,
+  type ApprovePin,
+  type SavePinDraft,
+  type UpdatePinDraft,
 } from "@pindash/contracts";
 
 @Injectable()
@@ -175,7 +176,7 @@ export class PinsService {
         throw new BadRequestException("Pinterest connection is not active");
       if (draft.mediaAsset?.status !== "READY")
         throw new BadRequestException("Media is not ready");
-      const snapshot = {
+      const snapshot = ApprovedPinSnapshotSchema.parse({
         draftId: draft.id,
         draftVersion: draft.version,
         workspaceId: draft.workspaceId,
@@ -190,7 +191,7 @@ export class PinsService {
         destinationUrl: draft.destinationUrl,
         scheduledForUtc: draft.scheduledForUtc?.toISOString() ?? null,
         scheduleTimezone: draft.scheduleTimezone,
-      };
+      });
       const approval = await tx.pinApproval.upsert({
         where: {
           pinDraftId_draftVersion: {

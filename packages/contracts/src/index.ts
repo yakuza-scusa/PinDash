@@ -80,6 +80,30 @@ export const ApprovePinSchema = z.object({
 });
 export type ApprovePin = z.infer<typeof ApprovePinSchema>;
 
+export const ApprovedPinSnapshotSchema = z.object({
+  draftId: z.string().uuid(),
+  draftVersion: z.number().int().positive(),
+  workspaceId: z.string().uuid(),
+  connectionId: z.string().uuid(),
+  mediaAssetId: z.string().uuid(),
+  mediaStorageKey: z.string().min(1),
+  boardId: z.string().min(1).max(100),
+  boardSectionId: z.string().min(1).max(100).nullable(),
+  title: z.string().min(1).max(100),
+  description: z.string().min(1).max(800),
+  altText: z.string().min(1).max(500),
+  destinationUrl: z
+    .url()
+    .refine(
+      (value) => ["http:", "https:"].includes(new URL(value).protocol),
+      "Only HTTP and HTTPS URLs are allowed",
+    )
+    .nullable(),
+  scheduledForUtc: z.iso.datetime().nullable(),
+  scheduleTimezone: z.string().max(100).nullable(),
+});
+export type ApprovedPinSnapshot = z.infer<typeof ApprovedPinSnapshotSchema>;
+
 export const PinterestImagePinRequestSchema = z.object({
   boardId: z.string().min(1),
   boardSectionId: z.string().min(1).optional(),

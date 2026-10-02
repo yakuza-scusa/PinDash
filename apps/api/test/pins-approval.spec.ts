@@ -9,15 +9,15 @@ vi.mock("@pindash/database", () => ({
 import { PinsService } from "../src/pins/pins.service";
 
 const completeDraft = {
-  id: "draft-1",
-  workspaceId: "workspace-1",
+  id: "11111111-1111-4111-8111-111111111111",
+  workspaceId: "22222222-2222-4222-8222-222222222222",
   version: 3,
   title: "A complete Pin",
   description: "Useful description",
   altText: "Accessible image description",
   destinationUrl: "https://example.com",
-  connectionId: "connection-1",
-  mediaAssetId: "media-1",
+  connectionId: "33333333-3333-4333-8333-333333333333",
+  mediaAssetId: "44444444-4444-4444-8444-444444444444",
   boardId: "board-1",
   boardSectionId: null,
   scheduledForUtc: null,
@@ -46,14 +46,14 @@ describe("PinsService approval", () => {
     transaction.mockImplementation((callback: (client: typeof tx) => unknown) =>
       callback(tx),
     );
-    const result = await new PinsService().approve("user-1", "draft-1", {
+    const result = await new PinsService().approve("user-1", completeDraft.id, {
       confirmed: true,
       draftVersion: 3,
     });
     expect(result.status).toBe("APPROVED");
     expect(tx.pinApproval.upsert).toHaveBeenCalledOnce();
     expect(tx.pinDraft.update).toHaveBeenCalledWith({
-      where: { id: "draft-1" },
+      where: { id: completeDraft.id },
       data: { status: "APPROVED" },
     });
     expect(tx.auditEvent.create).toHaveBeenCalledOnce();
@@ -67,7 +67,7 @@ describe("PinsService approval", () => {
       callback(tx),
     );
     await expect(
-      new PinsService().approve("user-1", "draft-1", {
+      new PinsService().approve("user-1", completeDraft.id, {
         confirmed: true,
         draftVersion: 2,
       }),

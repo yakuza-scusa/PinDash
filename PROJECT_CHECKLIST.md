@@ -170,8 +170,8 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Implement `POST /v5/pins` for image Pins
 - [x] Add internal idempotency key generation
 - [x] Route immediate publishing through the job queue
-- [ ] Lock publication jobs to prevent duplicates
-- [ ] Revalidate approval snapshot before publishing
+- [x] Lock publication jobs to prevent duplicates
+- [x] Revalidate approval snapshot before publishing
 - [ ] Store Pinterest Pin ID and safe result metadata
 - [ ] Retrieve the Pin after creation to confirm success
 - [ ] Display publishing progress and result page

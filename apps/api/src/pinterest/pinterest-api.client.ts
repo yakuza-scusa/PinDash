@@ -50,7 +50,7 @@ function parseRetryAfter(value: string | null): number | undefined {
 @Injectable()
 export class PinterestApiClient {
   private readonly baseUrl = (
-    process.env.PINTEREST_API_BASE_URL ?? "https://api-sandbox.pinterest.com/v5"
+    process.env.PINTEREST_API_BASE_URL ?? "https://api.pinterest.com/v5"
   ).replace(/\/$/, "");
 
   async createImagePin(

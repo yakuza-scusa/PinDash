@@ -1,5 +1,17 @@
 import type { NextConfig } from "next";
 
+function configuredApiOrigin(): string {
+  try {
+    return new URL(
+      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1",
+    ).origin;
+  } catch {
+    return "http://localhost:4000";
+  }
+}
+
+const apiOrigin = configuredApiOrigin();
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
@@ -11,8 +23,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value:
-              "default-src 'self'; img-src 'self' data: blob: http://localhost:4000; connect-src 'self' http://localhost:4000 https://api.pinterest.com https://api-sandbox.pinterest.com; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+            value: `default-src 'self'; img-src 'self' data: blob: ${apiOrigin}; connect-src 'self' ${apiOrigin}; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
           },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {

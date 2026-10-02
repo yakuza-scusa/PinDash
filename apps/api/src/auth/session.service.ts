@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { database, MembershipRole } from "@pindash/database";
+import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomBytes } from "node:crypto";
 import type { AuthenticatedUser } from "./auth.types";
 
@@ -19,6 +20,16 @@ export class SessionService {
     string,
     { count: number; resetAt: number }
   >();
+  private readonly mediaBucket = process.env.S3_BUCKET ?? "pindash-media";
+  private readonly s3 = new S3Client({
+    region: process.env.S3_REGION ?? "us-east-1",
+    endpoint: process.env.S3_ENDPOINT ?? "http://localhost:9000",
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE !== "false",
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY ?? "pindash",
+      secretAccessKey: process.env.S3_SECRET_KEY ?? "",
+    },
+  });
 
   hashToken(token: string): string {
     return createHash("sha256").update(token).digest("hex");
@@ -324,6 +335,30 @@ export class SessionService {
   async deleteAccount(userId: string, confirmation: string): Promise<void> {
     if (confirmation !== "DELETE MY ACCOUNT")
       throw new BadRequestException("Type DELETE MY ACCOUNT to confirm");
+    const media = await database.mediaAsset.findMany({
+      where: { workspace: { ownerUserId: userId } },
+      select: { storageKey: true, thumbnailStorageKey: true },
+    });
+    const keys = [
+      ...new Set(
+        media.flatMap(({ storageKey, thumbnailStorageKey }) =>
+          [storageKey, thumbnailStorageKey].filter((key): key is string =>
+            Boolean(key),
+          ),
+        ),
+      ),
+    ];
+    for (let index = 0; index < keys.length; index += 1000) {
+      await this.s3.send(
+        new DeleteObjectsCommand({
+          Bucket: this.mediaBucket,
+          Delete: {
+            Objects: keys.slice(index, index + 1000).map((Key) => ({ Key })),
+            Quiet: true,
+          },
+        }),
+      );
+    }
     await database.$transaction(async (tx) => {
       await tx.workspace.deleteMany({ where: { ownerUserId: userId } });
       await tx.user.delete({ where: { id: userId } });

@@ -15,6 +15,13 @@ export class NotificationsService {
     });
   }
 
+  getPreferences(userId: string) {
+    return database.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { notifyInApp: true, notifyByEmail: true },
+    });
+  }
+
   async markRead(userId: string, id: string) {
     const result = await database.notification.updateMany({
       where: { id, userId },

@@ -1,5 +1,13 @@
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+function normalizeOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
 export function csrfAllowed(input: {
   method: string;
   url: string;
@@ -12,7 +20,9 @@ export function csrfAllowed(input: {
   if (input.url.startsWith("/api/v1/internal/")) return true;
   if (!input.cookie?.includes(`${input.cookieName ?? "pindash_session"}=`))
     return true;
-  return input.origin === input.webUrl;
+  const origin = input.origin ? normalizeOrigin(input.origin) : null;
+  const webOrigin = normalizeOrigin(input.webUrl);
+  return origin !== null && webOrigin !== null && origin === webOrigin;
 }
 
 export class RequestRateLimiter {

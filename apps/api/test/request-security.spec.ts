@@ -23,6 +23,16 @@ describe("request security", () => {
         cookieName: undefined,
       }),
     ).toBe(true);
+    expect(
+      csrfAllowed({
+        method: "DELETE",
+        url: "/api/v1/auth/account",
+        origin: "https://app.example",
+        cookie: "pindash_session=secret",
+        webUrl: "https://app.example/",
+        cookieName: undefined,
+      }),
+    ).toBe(true);
   });
 
   it("limits repeated requests per key and resets its window", () => {

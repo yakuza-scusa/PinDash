@@ -31,12 +31,20 @@ export default function NotificationsPage() {
   async function load() {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/notifications`, {
-        credentials: "include",
-      });
-      if (response.status === 401) return setProblem("expired");
-      if (!response.ok) throw new Error();
+      const [response, preferencesResponse] = await Promise.all([
+        fetch(`${API_URL}/notifications`, { credentials: "include" }),
+        fetch(`${API_URL}/notifications/preferences`, {
+          credentials: "include",
+        }),
+      ]);
+      if (response.status === 401 || preferencesResponse.status === 401)
+        return setProblem("expired");
+      if (!response.ok || !preferencesResponse.ok) throw new Error();
+      const preferences = (await preferencesResponse.json()) as {
+        notifyByEmail: boolean;
+      };
       setItems((await response.json()) as Notification[]);
+      setEmail(preferences.notifyByEmail);
       setProblem(null);
     } catch {
       setProblem(navigator.onLine ? "error" : "offline");

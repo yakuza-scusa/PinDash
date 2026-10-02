@@ -27,6 +27,11 @@ export class NotificationsController {
     return this.notifications.list(this.userId(request));
   }
 
+  @Get("preferences")
+  getPreferences(@Req() request: AuthenticatedRequest) {
+    return this.notifications.getPreferences(this.userId(request));
+  }
+
   @Patch(":id/read")
   markRead(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     return this.notifications.markRead(this.userId(request), id);

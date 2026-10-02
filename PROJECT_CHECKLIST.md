@@ -146,7 +146,7 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Persist completed media assets
 - [x] Connect media library page to the API
 - [ ] Add unused-media deletion flow
-- [ ] Add short-lived Pinterest retrieval URLs
+- [x] Add short-lived Pinterest retrieval URLs
 
 ## 8. Approval and confirmation
 

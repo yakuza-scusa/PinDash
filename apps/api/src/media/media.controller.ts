@@ -3,12 +3,15 @@ import {
   Body,
   Controller,
   Get,
+  Query,
   Param,
   Post,
   Req,
+  Res,
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
 import { CreateUploadIntentSchema } from "@pindash/contracts";
 import { ZodError } from "zod";
 import { SessionGuard } from "../auth/session.guard";
@@ -50,5 +53,27 @@ export class MediaController {
   @Post(":id/complete")
   complete(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     return this.media.completeUpload(this.userId(request), id);
+  }
+}
+
+@Controller("media/retrieve")
+export class PublicMediaController {
+  constructor(private readonly media: MediaService) {}
+
+  @Get(":id")
+  async retrieve(
+    @Param("id") id: string,
+    @Query("expires") expires: string,
+    @Query("signature") signature: string,
+    @Res() reply: FastifyReply,
+  ) {
+    const media = await this.media.retrieveForPinterest(
+      id,
+      expires ?? "",
+      signature ?? "",
+    );
+    reply.header("Content-Type", media.mimeType);
+    reply.header("Cache-Control", "private, max-age=60, no-transform");
+    return reply.send(media.body);
   }
 }

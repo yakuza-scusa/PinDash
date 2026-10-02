@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  ServiceUnavailableException,
 } from "@nestjs/common";
 import { database, MediaStatus } from "@pindash/database";
 import type { CreateUploadIntent } from "@pindash/contracts";
@@ -12,7 +13,12 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { createHash, randomUUID } from "node:crypto";
+import {
+  createHash,
+  createHmac,
+  randomUUID,
+  timingSafeEqual,
+} from "node:crypto";
 import { extname } from "node:path";
 import sharp from "sharp";
 
@@ -114,12 +120,60 @@ export class MediaService {
     return { assetId: asset.id, uploadUrl, expiresInSeconds: 300 };
   }
 
+  private retrievalSignature(assetId: string, expires: number): string {
+    const secret = process.env.SESSION_SECRET;
+    if (!secret)
+      throw new ServiceUnavailableException("SESSION_SECRET is missing");
+    return createHmac("sha256", secret)
+      .update(`pinterest-media:${assetId}:${expires}`)
+      .digest("hex");
+  }
+
   async createRetrievalUrl(storageKey: string): Promise<string> {
-    return getSignedUrl(
-      this.s3,
-      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
-      { expiresIn: 15 * 60 },
+    const publicApiUrl = process.env.PUBLIC_API_URL?.replace(/\/$/, "");
+    if (!publicApiUrl || !publicApiUrl.startsWith("https://"))
+      throw new ServiceUnavailableException(
+        "PUBLIC_API_URL must be a public HTTPS address before publishing",
+      );
+    const asset = await database.mediaAsset.findFirst({
+      where: { storageKey, status: MediaStatus.READY, deletedAt: null },
+      select: { id: true },
+    });
+    if (!asset) throw new NotFoundException("Approved media is unavailable");
+    const expires = Math.floor(Date.now() / 1000) + 10 * 60;
+    const signature = this.retrievalSignature(asset.id, expires);
+    return `${publicApiUrl}/api/v1/media/retrieve/${encodeURIComponent(asset.id)}?expires=${expires}&signature=${signature}`;
+  }
+
+  async retrieveForPinterest(
+    assetId: string,
+    expiresInput: string,
+    signature: string,
+  ) {
+    const expires = Number(expiresInput);
+    const now = Math.floor(Date.now() / 1000);
+    if (
+      !Number.isSafeInteger(expires) ||
+      expires <= now ||
+      expires > now + 15 * 60
+    )
+      throw new ForbiddenException("Media link is invalid or expired");
+    const expected = this.retrievalSignature(assetId, expires);
+    const valid =
+      signature.length === expected.length &&
+      timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+    if (!valid)
+      throw new ForbiddenException("Media link is invalid or expired");
+    const asset = await database.mediaAsset.findFirst({
+      where: { id: assetId, status: MediaStatus.READY, deletedAt: null },
+      select: { storageKey: true, mimeType: true },
+    });
+    if (!asset) throw new NotFoundException("Media is unavailable");
+    const object = await this.s3.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: asset.storageKey }),
     );
+    if (!object.Body) throw new NotFoundException("Media is unavailable");
+    return { body: object.Body, mimeType: asset.mimeType };
   }
 
   async completeUpload(userId: string, id: string) {

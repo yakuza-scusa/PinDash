@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ const primaryNavigation = [
 const secondaryNavigation = [
   { label: "Connections", href: "/connections", icon: Sparkles },
   { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Data controls", href: "/data-controls", icon: ShieldCheck },
   { label: "Help & support", href: "/support", icon: CircleHelp },
 ];
 

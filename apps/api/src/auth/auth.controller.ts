@@ -82,6 +82,42 @@ export class AuthController {
     return { authenticated: false };
   }
 
+  @Get("data-export")
+  @UseGuards(SessionGuard)
+  async exportData(
+    @Req() request: AuthenticatedRequest,
+    @Res() reply: FastifyReply,
+  ) {
+    if (!request.user) throw new UnauthorizedException();
+    const data = await this.sessions.exportUserData(request.user.id);
+    reply.header(
+      "Content-Disposition",
+      `attachment; filename="pindash-data-export-${new Date().toISOString().slice(0, 10)}.json"`,
+    );
+    reply.header("Content-Type", "application/json; charset=utf-8");
+    return reply.send(data);
+  }
+
+  @Delete("account")
+  @UseGuards(SessionGuard)
+  async deleteAccount(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: { confirmation?: unknown },
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    if (!request.user) throw new UnauthorizedException();
+    await this.sessions.deleteAccount(
+      request.user.id,
+      typeof body?.confirmation === "string" ? body.confirmation : "",
+    );
+    const cookieName = process.env.SESSION_COOKIE_NAME ?? "pindash_session";
+    reply.header(
+      "Set-Cookie",
+      `${cookieName}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
+    );
+    return { deleted: true };
+  }
+
   private setSessionCookie(
     reply: FastifyReply,
     session: { token: string; expiresAt: Date },

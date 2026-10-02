@@ -229,4 +229,104 @@ export class SessionService {
       where: { tokenHash: this.hashToken(token) },
     });
   }
+
+  async exportUserData(userId: string) {
+    const user = await database.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        emailVerifiedAt: true,
+        legalAcceptedAt: true,
+        createdAt: true,
+        memberships: {
+          select: {
+            role: true,
+            workspace: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                defaultTimezone: true,
+                createdAt: true,
+                connections: {
+                  select: {
+                    id: true,
+                    pinterestUserId: true,
+                    displayName: true,
+                    grantedScopes: true,
+                    status: true,
+                    createdAt: true,
+                  },
+                },
+                mediaAssets: {
+                  where: { deletedAt: null },
+                  select: {
+                    id: true,
+                    originalFilename: true,
+                    mimeType: true,
+                    byteSize: true,
+                    width: true,
+                    height: true,
+                    status: true,
+                    createdAt: true,
+                  },
+                },
+                pinDrafts: {
+                  select: {
+                    id: true,
+                    boardId: true,
+                    title: true,
+                    description: true,
+                    altText: true,
+                    destinationUrl: true,
+                    status: true,
+                    scheduledForUtc: true,
+                    scheduleTimezone: true,
+                    createdAt: true,
+                    updatedAt: true,
+                  },
+                },
+                auditEvents: {
+                  select: {
+                    action: true,
+                    entityType: true,
+                    entityId: true,
+                    createdAt: true,
+                  },
+                  orderBy: { createdAt: "desc" },
+                  take: 1000,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!user) throw new UnauthorizedException();
+    return {
+      exportedAt: new Date().toISOString(),
+      ...user,
+      memberships: user.memberships.map((membership) => ({
+        ...membership,
+        workspace: {
+          ...membership.workspace,
+          mediaAssets: membership.workspace.mediaAssets.map((asset) => ({
+            ...asset,
+            byteSize: asset.byteSize.toString(),
+          })),
+        },
+      })),
+    };
+  }
+
+  async deleteAccount(userId: string, confirmation: string): Promise<void> {
+    if (confirmation !== "DELETE MY ACCOUNT")
+      throw new BadRequestException("Type DELETE MY ACCOUNT to confirm");
+    await database.$transaction(async (tx) => {
+      await tx.workspace.deleteMany({ where: { ownerUserId: userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  }
 }

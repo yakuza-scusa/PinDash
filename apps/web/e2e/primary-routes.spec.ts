@@ -69,6 +69,11 @@ for (const [path, heading] of [
   ["/settings", "Settings"],
   ["/support", "Help & support"],
   ["/pins/new", "Create a Pin"],
+  ["/product", "Plan, approve and publish Pins with confidence."],
+  ["/privacy", "Privacy Policy"],
+  ["/terms", "Terms of Service"],
+  ["/contact", "How can we help?"],
+  ["/data-controls", "Data controls"],
 ] as const) {
   test(`${path} renders and meets automated WCAG checks`, async ({ page }) => {
     await page.goto(path);
@@ -81,6 +86,17 @@ for (const [path, heading] of [
     expect(results.violations).toEqual([]);
   });
 }
+
+test("responses include production security headers", async ({ page }) => {
+  const response = await page.goto("/product");
+  expect(response?.headers()["content-security-policy"]).toContain(
+    "frame-ancestors 'none'",
+  );
+  expect(response?.headers()["strict-transport-security"]).toContain(
+    "max-age=31536000",
+  );
+  expect(response?.headers()["x-content-type-options"]).toBe("nosniff");
+});
 
 test("Pins can be searched from API-backed results", async ({ page }) => {
   await page.goto("/pins");

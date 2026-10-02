@@ -214,17 +214,17 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 
 ## 12. Public pages and compliance
 
-- [ ] Create public product landing page
-- [ ] Create Privacy Policy page on the application domain
-- [ ] Create Terms of Service page
+- [x] Create public product landing page
+- [x] Create Privacy Policy page on the application domain
+- [x] Create Terms of Service page
 - [x] Create support page inside the dashboard
-- [ ] Add public support contact page
-- [ ] Add Pinterest disconnection instructions
-- [ ] Add user-data export
-- [ ] Add account/workspace deletion flow
-- [ ] Define retention periods
-- [ ] Create privacy data inventory
-- [ ] Add Content Security Policy and security headers
+- [x] Add public support contact page
+- [x] Add Pinterest disconnection instructions
+- [x] Add user-data export
+- [x] Add account/workspace deletion flow
+- [x] Define retention periods
+- [x] Create privacy data inventory
+- [x] Add Content Security Policy and security headers
 - [ ] Add production TLS and HSTS configuration
 - [ ] Review Pinterest brand and Developer Guidelines compliance
 
@@ -242,8 +242,8 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [ ] Add uptime monitoring
 - [ ] Add encrypted database backups
 - [ ] Test backup restoration
-- [ ] Add dependency, secret, and container scanning
-- [ ] Separate development, staging, and production secrets
+- [x] Add dependency, secret, and container scanning
+- [x] Separate development, staging, and production secrets
 
 ## 14. Pinterest Standard-access video
 

@@ -1835,3 +1835,136 @@ h1 {
   border-radius: 12px;
   background: #eef0f5;
 }
+.public-site {
+  min-height: 100vh;
+  background: #f7f8fb;
+  color: #101525;
+}
+.public-header,
+.public-footer {
+  width: min(1120px, calc(100% - 2rem));
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 0;
+}
+.public-header nav,
+.public-footer {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.public-brand {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #cc173f;
+}
+.public-hero {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 4rem auto 2rem;
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 3rem;
+  align-items: center;
+}
+.public-hero h1 {
+  max-width: 720px;
+  margin: 0.5rem 0 1rem;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+.public-hero p {
+  max-width: 650px;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: #596174;
+}
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.hero-proof {
+  display: grid;
+  gap: 0.75rem;
+  padding: 2rem;
+  border: 1px solid #e1e4ec;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 20px 55px rgb(18 24 38 / 8%);
+}
+.hero-proof svg {
+  color: #cc173f;
+}
+.public-features {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 4rem auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.public-features article {
+  padding: 1.5rem;
+  border: 1px solid #e1e4ec;
+  border-radius: 18px;
+  background: white;
+}
+.public-features svg {
+  color: #cc173f;
+}
+.legal-page {
+  width: min(760px, calc(100% - 2rem));
+  margin: 3rem auto 6rem;
+  padding: 2.5rem;
+  border: 1px solid #e1e4ec;
+  border-radius: 20px;
+  background: white;
+}
+.legal-page h1 {
+  font-size: clamp(2.2rem, 5vw, 3.75rem);
+  letter-spacing: -0.04em;
+}
+.legal-page h2 {
+  margin-top: 2rem;
+}
+.legal-page p,
+.legal-page li {
+  line-height: 1.75;
+  color: #4f586b;
+}
+.legal-updated {
+  font-size: 0.9rem;
+}
+.public-footer {
+  border-top: 1px solid #e1e4ec;
+  justify-content: flex-start;
+}
+.public-footer span {
+  margin-right: auto;
+}
+.danger-zone {
+  border-color: #f0b8c3;
+}
+.button-danger {
+  color: white;
+  background: #b10f34;
+}
+@media (max-width: 760px) {
+  .public-header {
+    align-items: flex-start;
+  }
+  .public-header nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .public-hero,
+  .public-features {
+    grid-template-columns: 1fr;
+  }
+  .legal-page {
+    padding: 1.5rem;
+  }
+}

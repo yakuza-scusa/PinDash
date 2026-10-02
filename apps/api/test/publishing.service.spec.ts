@@ -1,14 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHmac } from "node:crypto";
 
-const { transaction } = vi.hoisted(() => ({ transaction: vi.fn() }));
+const { transaction, publicationFindFirst, publicationUpdate } = vi.hoisted(
+  () => ({
+    transaction: vi.fn(),
+    publicationFindFirst: vi.fn(),
+    publicationUpdate: vi.fn(),
+  }),
+);
 vi.mock("@pindash/database", () => ({
-  database: { $transaction: transaction },
+  database: {
+    $transaction: transaction,
+    publicationJob: {
+      findFirst: publicationFindFirst,
+      update: publicationUpdate,
+    },
+  },
   JobStatus: {
     PENDING: "PENDING",
     QUEUED: "QUEUED",
+    RUNNING: "RUNNING",
     SUCCEEDED: "SUCCEEDED",
+    FAILED: "FAILED",
+    UNKNOWN_RESULT: "UNKNOWN_RESULT",
   },
-  PinStatus: { APPROVED: "APPROVED", QUEUED: "QUEUED" },
+  PinStatus: {
+    APPROVED: "APPROVED",
+    QUEUED: "QUEUED",
+    PUBLISHED: "PUBLISHED",
+    FAILED: "FAILED",
+    UNKNOWN_RESULT: "UNKNOWN_RESULT",
+    CONNECTION_REQUIRED: "CONNECTION_REQUIRED",
+  },
 }));
 
 import { PublishingService } from "../src/publishing/publishing.service";
@@ -94,5 +117,87 @@ describe("PublishingService", () => {
     await expect(service.publishNow("user-1", "draft-1")).rejects.toThrow(
       "latest draft version",
     );
+  });
+
+  it("reconciles a stored Pinterest candidate without creating a duplicate", async () => {
+    const snapshot = {
+      draftId: "11111111-1111-4111-8111-111111111111",
+      draftVersion: 2,
+      workspaceId: "22222222-2222-4222-8222-222222222222",
+      connectionId: "33333333-3333-4333-8333-333333333333",
+      mediaAssetId: "44444444-4444-4444-8444-444444444444",
+      mediaStorageKey: "workspace/image.jpg",
+      boardId: "board-1",
+      boardSectionId: null,
+      title: "Safe retry",
+      description: "Description",
+      altText: "Alternative text",
+      destinationUrl: null,
+      scheduledForUtc: null,
+      scheduleTimezone: null,
+    };
+    publicationFindFirst.mockResolvedValue({
+      id: "job-1",
+      pinDraftId: snapshot.draftId,
+      status: "RUNNING",
+      attemptCount: 2,
+      maxAttempts: 5,
+      candidatePinterestPinId: "pin-existing",
+      pinDraft: {
+        id: snapshot.draftId,
+        version: 2,
+        connectionId: snapshot.connectionId,
+        mediaAssetId: snapshot.mediaAssetId,
+        connection: {
+          status: "CONNECTED",
+          encryptedAccessToken: Buffer.from("encrypted"),
+        },
+        mediaAsset: {
+          status: "READY",
+          storageKey: snapshot.mediaStorageKey,
+        },
+        approvals: [{ draftVersion: 2, contentSnapshot: snapshot }],
+      },
+    });
+    const tx = {
+      publishedPin: { upsert: vi.fn().mockResolvedValue({}) },
+      publicationJob: { update: vi.fn().mockResolvedValue({}) },
+      publicationAttempt: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      pinDraft: { update: vi.fn().mockResolvedValue({}) },
+      auditEvent: { create: vi.fn().mockResolvedValue({}) },
+    };
+    transaction.mockImplementation((callback: (client: typeof tx) => unknown) =>
+      callback(tx),
+    );
+    const pinterest = {
+      createImagePin: vi.fn(),
+      getPin: vi.fn().mockResolvedValue({ id: "pin-existing" }),
+    };
+    const secret = process.env.SESSION_SECRET!;
+    const executionToken = createHmac("sha256", secret)
+      .update("publication:job-1")
+      .digest("hex");
+    const service = new PublishingService(
+      {} as never,
+      pinterest as never,
+      { decrypt: vi.fn().mockReturnValue("access-token") } as never,
+      {
+        createRetrievalUrl: vi.fn().mockResolvedValue("https://media.test/a"),
+      } as never,
+    );
+
+    await expect(
+      service.execute("job-1", executionToken),
+    ).resolves.toMatchObject({
+      pinterestPinId: "pin-existing",
+    });
+    expect(pinterest.createImagePin).not.toHaveBeenCalled();
+    expect(pinterest.getPin).toHaveBeenCalledWith(
+      "access-token",
+      "pin-existing",
+    );
+    expect(publicationUpdate).not.toHaveBeenCalled();
   });
 });

@@ -215,6 +215,7 @@ model PublicationJob {
   lockedBy         String?
   attemptCount     Int                  @default(0)
   maxAttempts      Int                  @default(5)
+  candidatePinterestPinId String?
   lastErrorCode    String?
   lastErrorMessage String?
   createdAt        DateTime             @default(now())

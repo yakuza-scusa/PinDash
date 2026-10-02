@@ -1,6 +1,7 @@
-import { Worker, type Job } from "bullmq";
+import { Queue, Worker, type Job } from "bullmq";
 import { hostname } from "node:os";
 import { loadValidatedApprovalSnapshot } from "./approval-snapshot";
+import { deadLetterPayload, exhausted } from "./dead-letter";
 import { claimPublicationJob } from "./publication-lock";
 import {
   PublicationExecutionError,
@@ -72,8 +73,13 @@ export function createPublicationWorker(redisUrl: string, apiUrl: string) {
 }
 
 if (process.env.NODE_ENV !== "test") {
+  const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+  const deadLetters = new Queue("pinterest-publication-dead-letter", {
+    connection: connection(redisUrl),
+    defaultJobOptions: { removeOnComplete: false, removeOnFail: false },
+  });
   const worker = createPublicationWorker(
-    process.env.REDIS_URL ?? "redis://localhost:6379",
+    redisUrl,
     process.env.API_URL ?? "http://localhost:4000",
   );
   worker.on("ready", () =>
@@ -91,4 +97,25 @@ if (process.env.NODE_ENV !== "test") {
       }),
     ),
   );
+  worker.on("failed", (job, error) => {
+    if (!job || !exhausted(job)) return;
+    const payload = deadLetterPayload(job, error);
+    void deadLetters
+      .add("publication-exhausted", payload, {
+        jobId: `dead-${job.id ?? payload.publicationJobId}`,
+      })
+      .catch((deadLetterError: unknown) =>
+        console.error(
+          JSON.stringify({
+            level: "error",
+            service: "worker",
+            event: "dead_letter_failed",
+            message:
+              deadLetterError instanceof Error
+                ? deadLetterError.message
+                : "Unknown dead-letter error",
+          }),
+        ),
+      );
+  });
 }

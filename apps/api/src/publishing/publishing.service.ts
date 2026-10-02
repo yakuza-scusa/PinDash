@@ -195,20 +195,33 @@ export class PublishingService {
       const mediaUrl = await this.media.createRetrievalUrl(
         snapshot.mediaStorageKey,
       );
-      const created = await this.pinterest.createImagePin(accessToken, {
-        boardId: snapshot.boardId,
-        ...(snapshot.boardSectionId
-          ? { boardSectionId: snapshot.boardSectionId }
-          : {}),
-        title: snapshot.title,
-        description: snapshot.description,
-        altText: snapshot.altText,
-        ...(snapshot.destinationUrl
-          ? { destinationUrl: snapshot.destinationUrl }
-          : {}),
-        mediaUrl,
-      });
-      const confirmed = await this.pinterest.getPin(accessToken, created.id);
+      let candidatePinterestPinId = job.candidatePinterestPinId;
+      if (!candidatePinterestPinId) {
+        const created = await this.pinterest.createImagePin(accessToken, {
+          boardId: snapshot.boardId,
+          ...(snapshot.boardSectionId
+            ? { boardSectionId: snapshot.boardSectionId }
+            : {}),
+          title: snapshot.title,
+          description: snapshot.description,
+          altText: snapshot.altText,
+          ...(snapshot.destinationUrl
+            ? { destinationUrl: snapshot.destinationUrl }
+            : {}),
+          mediaUrl,
+        });
+        candidatePinterestPinId = created.id;
+        // Persist the external ID before confirmation. A retry can reconcile this
+        // exact Pin instead of issuing another POST and creating a duplicate.
+        await database.publicationJob.update({
+          where: { id: job.id },
+          data: { candidatePinterestPinId },
+        });
+      }
+      const confirmed = await this.pinterest.getPin(
+        accessToken,
+        candidatePinterestPinId,
+      );
       const publishedAt = new Date();
       const pinterestUrl = `https://www.pinterest.com/pin/${encodeURIComponent(confirmed.id)}/`;
       await database.$transaction(async (tx) => {

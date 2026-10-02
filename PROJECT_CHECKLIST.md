@@ -179,8 +179,8 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Classify retryable and permanent errors
 - [x] Respect `Retry-After` and rate-limit headers
 - [x] Add exponential backoff with jitter
-- [ ] Reconcile unknown outcomes before retrying
-- [ ] Add dead-letter handling
+- [x] Reconcile unknown outcomes before retrying
+- [x] Add dead-letter handling
 - [ ] Add image-Pin integration tests with sanitized fixtures
 - [ ] Complete one real Trial/Sandbox Pin creation
 

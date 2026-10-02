@@ -5,7 +5,7 @@ import {
   Injectable,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { database } from "@pindash/database";
+import { ConnectionStatus, database, PinStatus } from "@pindash/database";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { TokenCryptoService } from "./token-crypto.service";
@@ -21,6 +21,14 @@ const tokenResponseSchema = z.object({
 const accountSchema = z
   .object({ username: z.string().min(1), account_type: z.string().optional() })
   .passthrough();
+
+const refreshResponseSchema = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1).optional(),
+  expires_in: z.number().positive(),
+  refresh_token_expires_in: z.number().positive().optional(),
+  scope: z.string().optional(),
+});
 
 @Injectable()
 export class PinterestOAuthService {
@@ -192,21 +200,156 @@ export class PinterestOAuthService {
     });
   }
 
+  async validAccessToken(connectionId: string): Promise<string> {
+    const connection = await database.pinterestConnection.findUnique({
+      where: { id: connectionId },
+    });
+    if (
+      !connection ||
+      connection.status === ConnectionStatus.DISCONNECTED ||
+      connection.status === ConnectionStatus.REVOKED
+    )
+      throw new BadRequestException("Pinterest connection is not active");
+    const refreshBefore = new Date(Date.now() + 5 * 60_000);
+    if (
+      connection.encryptedAccessToken &&
+      connection.accessTokenExpiresAt > refreshBefore
+    )
+      return this.tokenCrypto.decrypt(
+        Buffer.from(connection.encryptedAccessToken),
+      );
+    if (
+      !connection.encryptedRefreshToken ||
+      (connection.refreshTokenExpiresAt &&
+        connection.refreshTokenExpiresAt <= new Date())
+    )
+      throw new BadRequestException(
+        "Pinterest refresh credentials expired. Reconnect the account.",
+      );
+
+    const lock = await database.pinterestConnection.updateMany({
+      where: {
+        id: connection.id,
+        status: ConnectionStatus.CONNECTED,
+        updatedAt: connection.updatedAt,
+      },
+      data: { status: ConnectionStatus.EXPIRING },
+    });
+    if (lock.count !== 1) {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const refreshed = await database.pinterestConnection.findUnique({
+        where: { id: connection.id },
+      });
+      if (
+        refreshed?.status === ConnectionStatus.CONNECTED &&
+        refreshed.encryptedAccessToken &&
+        refreshed.accessTokenExpiresAt > new Date()
+      )
+        return this.tokenCrypto.decrypt(
+          Buffer.from(refreshed.encryptedAccessToken),
+        );
+      throw new ServiceUnavailableException(
+        "Pinterest credentials are currently being refreshed. Retry shortly.",
+      );
+    }
+
+    const config = this.config();
+    const refreshToken = this.tokenCrypto.decrypt(
+      Buffer.from(connection.encryptedRefreshToken),
+    );
+    const response = await fetch(`${config.apiBaseUrl}/oauth/token`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+    });
+    if (!response.ok) {
+      await database.pinterestConnection.updateMany({
+        where: { id: connection.id, status: ConnectionStatus.EXPIRING },
+        data: { status: ConnectionStatus.REFRESH_FAILED },
+      });
+      throw new BadGatewayException(
+        "Pinterest credentials could not be refreshed. Reconnect the account.",
+      );
+    }
+    const tokens = refreshResponseSchema.parse(await response.json());
+    const now = Date.now();
+    await database.pinterestConnection.update({
+      where: { id: connection.id },
+      data: {
+        encryptedAccessToken: this.tokenCrypto.encrypt(tokens.access_token),
+        encryptedRefreshToken: tokens.refresh_token
+          ? this.tokenCrypto.encrypt(tokens.refresh_token)
+          : connection.encryptedRefreshToken,
+        accessTokenExpiresAt: new Date(now + tokens.expires_in * 1_000),
+        refreshTokenExpiresAt: tokens.refresh_token_expires_in
+          ? new Date(now + tokens.refresh_token_expires_in * 1_000)
+          : connection.refreshTokenExpiresAt,
+        ...(tokens.scope
+          ? { grantedScopes: tokens.scope.split(/[ ,]+/).filter(Boolean) }
+          : {}),
+        status: ConnectionStatus.CONNECTED,
+        lastRefreshedAt: new Date(now),
+      },
+    });
+    return tokens.access_token;
+  }
+
+  async disconnect(userId: string, connectionId: string) {
+    const connection = await database.pinterestConnection.findFirst({
+      where: {
+        id: connectionId,
+        workspace: { members: { some: { userId } } },
+      },
+    });
+    if (!connection)
+      throw new ForbiddenException("Pinterest connection access denied");
+    await database.$transaction(async (tx) => {
+      await tx.pinterestConnection.update({
+        where: { id: connection.id },
+        data: {
+          encryptedAccessToken: null,
+          encryptedRefreshToken: null,
+          status: ConnectionStatus.DISCONNECTED,
+        },
+      });
+      await tx.pinDraft.updateMany({
+        where: {
+          connectionId: connection.id,
+          status: { notIn: [PinStatus.PUBLISHED, PinStatus.CANCELLED] },
+        },
+        data: { status: PinStatus.CONNECTION_REQUIRED },
+      });
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: connection.workspaceId,
+          actorUserId: userId,
+          action: "pinterest.disconnected",
+          entityType: "PinterestConnection",
+          entityId: connection.id,
+        },
+      });
+    });
+    return { disconnected: true };
+  }
+
   async listBoards(userId: string, connectionId: string) {
     const connection = await database.pinterestConnection.findFirst({
       where: { id: connectionId, workspace: { members: { some: { userId } } } },
     });
     if (!connection)
       throw new ForbiddenException("Pinterest connection access denied");
-    if (connection.accessTokenExpiresAt <= new Date())
-      throw new BadRequestException(
-        "Pinterest connection has expired. Reconnect the account.",
-      );
+    const accessToken = await this.validAccessToken(connection.id);
     const response = await fetch(
       `${this.config().apiBaseUrl}/boards?page_size=100`,
       {
         headers: {
-          Authorization: `Bearer ${this.tokenCrypto.decrypt(Buffer.from(connection.encryptedAccessToken))}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       },
     );

@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Param,
   Query,
@@ -29,6 +30,13 @@ export class PinterestController {
   boards(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     if (!request.user) throw new UnauthorizedException();
     return this.oauth.listBoards(request.user.id, id);
+  }
+
+  @Delete("connections/:id")
+  @UseGuards(SessionGuard)
+  disconnect(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+    if (!request.user) throw new UnauthorizedException();
+    return this.oauth.disconnect(request.user.id, id);
   }
 
   @Get("oauth/start")

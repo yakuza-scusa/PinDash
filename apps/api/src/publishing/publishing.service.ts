@@ -14,7 +14,7 @@ import {
   PinterestApiClient,
   PinterestApiError,
 } from "../pinterest/pinterest-api.client";
-import { TokenCryptoService } from "../pinterest/token-crypto.service";
+import { PinterestOAuthService } from "../pinterest/pinterest-oauth.service";
 import { PublishQueueService } from "./publish-queue.service";
 
 @Injectable()
@@ -22,7 +22,7 @@ export class PublishingService {
   constructor(
     private readonly queue: PublishQueueService,
     private readonly pinterest: PinterestApiClient,
-    private readonly tokens: TokenCryptoService,
+    private readonly oauth: PinterestOAuthService,
     private readonly media: MediaService,
   ) {}
 
@@ -189,8 +189,8 @@ export class PublishingService {
       throw new BadRequestException("Approved resources are no longer valid");
 
     try {
-      const accessToken = this.tokens.decrypt(
-        Buffer.from(job.pinDraft.connection.encryptedAccessToken),
+      const accessToken = await this.oauth.validAccessToken(
+        job.pinDraft.connection.id,
       );
       const mediaUrl = await this.media.createRetrievalUrl(
         snapshot.mediaStorageKey,

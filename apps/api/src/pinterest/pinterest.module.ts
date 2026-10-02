@@ -9,6 +9,6 @@ import { PinterestApiClient } from "./pinterest-api.client";
   imports: [AuthModule],
   controllers: [PinterestController],
   providers: [PinterestOAuthService, TokenCryptoService, PinterestApiClient],
-  exports: [PinterestApiClient, TokenCryptoService],
+  exports: [PinterestApiClient, TokenCryptoService, PinterestOAuthService],
 })
 export class PinterestModule {}

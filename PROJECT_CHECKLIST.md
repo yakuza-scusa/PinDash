@@ -83,11 +83,11 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [ ] Register the exact OAuth redirect URI in Pinterest Developer Portal
 - [ ] Confirm required scopes with the Trial application
 - [ ] Complete a real OAuth connection test
-- [ ] Implement continuous refresh-token rotation
-- [ ] Refresh access tokens before expiry
-- [ ] Handle refresh-token race conditions atomically
-- [ ] Add disconnect endpoint and confirmation dialog
-- [ ] Remove encrypted credentials on disconnect
+- [x] Implement continuous refresh-token rotation
+- [x] Refresh access tokens before expiry
+- [x] Handle refresh-token race conditions atomically
+- [x] Add disconnect endpoint and confirmation dialog
+- [x] Remove encrypted credentials on disconnect
 - [ ] Add revoked, expiring, and refresh-failed UI states
 - [ ] Add OAuth success, denial, invalid-state, expired-state, and reused-state tests
 

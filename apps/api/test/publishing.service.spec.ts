@@ -182,7 +182,7 @@ describe("PublishingService", () => {
     const service = new PublishingService(
       {} as never,
       pinterest as never,
-      { decrypt: vi.fn().mockReturnValue("access-token") } as never,
+      { validAccessToken: vi.fn().mockResolvedValue("access-token") } as never,
       {
         createRetrievalUrl: vi.fn().mockResolvedValue("https://media.test/a"),
       } as never,

@@ -7,6 +7,7 @@ import {
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
+  Unplug,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "../../components/app-shell";
@@ -113,6 +114,26 @@ export default function ConnectionsPage() {
     window.location.assign(payload.authorizationUrl);
   }
 
+  async function disconnectPinterest(connection: Connection) {
+    if (
+      !window.confirm(
+        `Disconnect @${connection.displayName ?? connection.pinterestUserId}? Scheduled and draft Pins using this account will require reconnection.`,
+      )
+    )
+      return;
+    setLoading(true);
+    const response = await fetch(
+      `${API_URL}/pinterest/connections/${encodeURIComponent(connection.id)}`,
+      { method: "DELETE", credentials: "include" },
+    );
+    if (!response.ok) {
+      setError("Pinterest could not be disconnected. Please retry.");
+      setLoading(false);
+      return;
+    }
+    await load();
+  }
+
   return (
     <AppShell>
       <div className="page-heading connections-heading">
@@ -202,8 +223,19 @@ export default function ConnectionsPage() {
                       </span>
                     </span>
                     <span className="connected-badge">
-                      <CheckCircle2 size={14} /> Connected
+                      <CheckCircle2 size={14} />{" "}
+                      {connection.status.toLowerCase().replaceAll("_", " ")}
                     </span>
+                    {connection.status !== "DISCONNECTED" ? (
+                      <button
+                        className="button button-secondary"
+                        type="button"
+                        onClick={() => void disconnectPinterest(connection)}
+                        aria-label={`Disconnect ${connection.displayName ?? connection.pinterestUserId}`}
+                      >
+                        <Unplug size={15} /> Disconnect
+                      </button>
+                    ) : null}
                   </li>
                 ))}
               </ul>

@@ -113,7 +113,7 @@ model PinterestConnection {
   workspaceId           String           @db.Uuid
   pinterestUserId       String
   displayName           String?
-  encryptedAccessToken  Bytes
+  encryptedAccessToken  Bytes?
   encryptedRefreshToken Bytes?
   accessTokenExpiresAt  DateTime
   refreshTokenExpiresAt DateTime?

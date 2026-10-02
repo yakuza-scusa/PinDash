@@ -1,20 +1,39 @@
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { AppShell } from "../../components/app-shell";
-import { PageHeader } from "../../components/page-header";
+"use client";
 
-const days = ["Mon 29", "Tue 30", "Wed 1", "Thu 2", "Fri 3", "Sat 4", "Sun 5"];
-const events = [
-  {
-    day: 2,
-    time: "18:30",
-    title: "Small balcony garden checklist",
-    tone: "blue",
-  },
-  { day: 4, time: "20:00", title: "Seven calm corners", tone: "coral" },
-  { day: 5, time: "11:00", title: "Weekend brunch board", tone: "gold" },
-];
+import { Plus } from "lucide-react";
+import { AppShell } from "../../components/app-shell";
+import {
+  DataSkeleton,
+  EmptyState,
+  ProblemState,
+} from "../../components/data-state";
+import { PageHeader } from "../../components/page-header";
+import { usePins } from "../../hooks/use-pins";
+import { API_URL } from "../../lib/pin-data";
 
 export default function CalendarPage() {
+  const { pins, loading, problem, reload, signIn } = usePins();
+  const scheduled = pins
+    .filter((pin) => pin.scheduledForUtc && pin.status === "SCHEDULED")
+    .sort((a, b) =>
+      String(a.scheduledForUtc).localeCompare(String(b.scheduledForUtc)),
+    );
+
+  async function cancel(id: string, title: string) {
+    if (
+      !window.confirm(
+        `Cancel the scheduled publication for “${title || "Untitled Pin"}”?`,
+      )
+    )
+      return;
+    const response = await fetch(
+      `${API_URL}/pins/${encodeURIComponent(id)}/cancel-schedule`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!response.ok) window.alert("The schedule could not be cancelled.");
+    await reload();
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -27,43 +46,67 @@ export default function CalendarPage() {
           </a>
         }
       />
-      <section className="panel calendar-panel">
-        <div className="calendar-toolbar">
-          <div>
-            <button className="icon-button" aria-label="Previous week">
-              <ChevronLeft size={18} />
-            </button>
-            <button className="icon-button" aria-label="Next week">
-              <ChevronRight size={18} />
-            </button>
-          </div>
-          <h2>September 29 – October 5</h2>
-          <button className="button button-secondary">Today</button>
-        </div>
-        <div className="week-grid">
-          {days.map((day, index) => (
-            <div
-              className={`calendar-day ${index === 1 ? "today" : ""}`}
-              key={day}
-            >
-              <strong>{day}</strong>
-              <div className="day-events">
-                {events
-                  .filter((event) => event.day === index)
-                  .map((event) => (
-                    <article
-                      className={`calendar-event ${event.tone}`}
-                      key={event.title}
-                    >
-                      <span>{event.time}</span>
-                      <b>{event.title}</b>
-                    </article>
-                  ))}
-              </div>
-            </div>
+      {loading ? <DataSkeleton /> : null}
+      {!loading && problem ? (
+        <ProblemState
+          problem={problem}
+          onRetry={() => void reload()}
+          onSignIn={() => void signIn()}
+        />
+      ) : null}
+      {!loading && !problem && !scheduled.length ? (
+        <EmptyState
+          title="No scheduled Pins"
+          description="Choose Schedule in the composer and approve the Pin to place it here."
+          action={
+            <a className="button button-primary" href="/pins/new">
+              Schedule Pin
+            </a>
+          }
+        />
+      ) : null}
+      {!loading && !problem && scheduled.length ? (
+        <section className="panel data-list" aria-label="Scheduled Pins">
+          {scheduled.map((pin) => (
+            <article className="data-row" key={pin.id}>
+              <span className="item-copy">
+                <strong className="item-title">
+                  {pin.title || "Untitled Pin"}
+                </strong>
+                <span className="item-meta">
+                  {new Intl.DateTimeFormat(undefined, {
+                    dateStyle: "full",
+                    timeStyle: "short",
+                    timeZone: pin.scheduleTimezone ?? undefined,
+                  }).format(new Date(pin.scheduledForUtc!))}
+                  {pin.scheduleTimezone ? ` · ${pin.scheduleTimezone}` : ""}
+                </span>
+              </span>
+              <a
+                className="button button-secondary"
+                href={`/pins/new?draft=${encodeURIComponent(pin.id)}`}
+                onClick={(event) => {
+                  if (
+                    !window.confirm(
+                      `Edit the schedule for “${pin.title || "Untitled Pin"}”? The Pin will require approval again.`,
+                    )
+                  )
+                    event.preventDefault();
+                }}
+              >
+                Reschedule
+              </a>
+              <button
+                className="button button-secondary"
+                type="button"
+                onClick={() => void cancel(pin.id, pin.title)}
+              >
+                Cancel
+              </button>
+            </article>
           ))}
-        </div>
-      </section>
+        </section>
+      ) : null}
     </AppShell>
   );
 }

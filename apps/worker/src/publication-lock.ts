@@ -18,13 +18,16 @@ export async function claimPublicationJob(
 ): Promise<ClaimedPublicationJob | null> {
   if (!workerId.trim()) throw new Error("workerId is required");
   const lockedAt = new Date();
+  const staleBefore = new Date(lockedAt.getTime() - 5 * 60_000);
 
   return database.$transaction(async (tx) => {
     const claim = await tx.publicationJob.updateMany({
       where: {
         id: publicationJobId,
-        status: JobStatus.QUEUED,
-        lockedAt: null,
+        OR: [
+          { status: JobStatus.QUEUED, lockedAt: null },
+          { status: JobStatus.RUNNING, lockedAt: { lt: staleBefore } },
+        ],
       },
       data: {
         status: JobStatus.RUNNING,

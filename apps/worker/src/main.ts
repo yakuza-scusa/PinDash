@@ -7,6 +7,7 @@ import {
   PublicationExecutionError,
   publicationRetryDelay,
 } from "./retry-policy";
+import { releaseDuePublications } from "./scheduler";
 
 export const PUBLISH_QUEUE = "pinterest-publication";
 
@@ -78,6 +79,9 @@ if (process.env.NODE_ENV !== "test") {
     connection: connection(redisUrl),
     defaultJobOptions: { removeOnComplete: false, removeOnFail: false },
   });
+  const publications = new Queue(PUBLISH_QUEUE, {
+    connection: connection(redisUrl),
+  });
   const worker = createPublicationWorker(
     redisUrl,
     process.env.API_URL ?? "http://localhost:4000",
@@ -118,4 +122,27 @@ if (process.env.NODE_ENV !== "test") {
         ),
       );
   });
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) throw new Error("SESSION_SECRET is required by worker");
+  const releaseDue = () =>
+    void releaseDuePublications(publications, sessionSecret).catch((error) =>
+      console.error(
+        JSON.stringify({
+          level: "error",
+          service: "worker",
+          event: "scheduler_failed",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+      ),
+    );
+  releaseDue();
+  setInterval(releaseDue, 15_000).unref();
+  const heartbeat = () =>
+    void publications.client.then((redis) =>
+      redis.set("pindash:worker:heartbeat", new Date().toISOString(), {
+        EX: 45,
+      }),
+    );
+  heartbeat();
+  setInterval(heartbeat, 15_000).unref();
 }

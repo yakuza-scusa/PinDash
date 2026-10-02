@@ -25,7 +25,15 @@ type Draft = {
   description: string;
   altText: string | null;
   destinationUrl: string | null;
+  scheduledForUtc: string | null;
+  scheduleTimezone: string | null;
 };
+
+function toLocalDateTime(value: string): string {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
 
 export default function NewPinPage() {
   const router = useRouter();
@@ -38,6 +46,11 @@ export default function NewPinPage() {
     [description, setDescription] = useState(""),
     [altText, setAltText] = useState(""),
     [destinationUrl, setDestinationUrl] = useState("");
+  const [timing, setTiming] = useState<"now" | "scheduled">("now"),
+    [scheduledLocal, setScheduledLocal] = useState("");
+  const [minimumSchedule] = useState(() =>
+    toLocalDateTime(new Date(Date.now() + 60_000).toISOString()),
+  );
   const [status, setStatus] = useState(
       "Connect Pinterest before saving a draft.",
     ),
@@ -90,6 +103,10 @@ export default function NewPinPage() {
             setDescription(draft.description);
             setAltText(draft.altText ?? "");
             setDestinationUrl(draft.destinationUrl ?? "");
+            if (draft.scheduledForUtc) {
+              setTiming("scheduled");
+              setScheduledLocal(toLocalDateTime(draft.scheduledForUtc));
+            }
             suppressLoadedDraftAutosave.current = true;
             setStatus("Draft loaded. Changes save automatically.");
           }
@@ -150,6 +167,14 @@ export default function NewPinPage() {
             description,
             altText: altText || null,
             destinationUrl: destinationUrl || null,
+            scheduledForUtc:
+              timing === "scheduled" && scheduledLocal
+                ? new Date(scheduledLocal).toISOString()
+                : null,
+            scheduleTimezone:
+              timing === "scheduled"
+                ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                : null,
           }),
         },
       );
@@ -203,6 +228,14 @@ export default function NewPinPage() {
               description,
               altText: altText || null,
               destinationUrl: destinationUrl || null,
+              scheduledForUtc:
+                timing === "scheduled" && scheduledLocal
+                  ? new Date(scheduledLocal).toISOString()
+                  : null,
+              scheduleTimezone:
+                timing === "scheduled"
+                  ? Intl.DateTimeFormat().resolvedOptions().timeZone
+                  : null,
             }),
           },
         );
@@ -234,6 +267,8 @@ export default function NewPinPage() {
     mediaAssetId,
     session,
     title,
+    timing,
+    scheduledLocal,
   ]);
   async function startSession() {
     setLoading(true);
@@ -418,13 +453,47 @@ export default function NewPinPage() {
               <fieldset>
                 <legend>Publish timing</legend>
                 <label className="radio-row">
-                  <input type="radio" name="timing" defaultChecked />
+                  <input
+                    type="radio"
+                    name="timing"
+                    checked={timing === "now"}
+                    onChange={() => setTiming("now")}
+                  />
                   <span>
                     <b>Publish now</b>
                     <small>Send after approval</small>
                   </span>
                   <Check size={16} />
                 </label>
+                <label className="radio-row">
+                  <input
+                    type="radio"
+                    name="timing"
+                    checked={timing === "scheduled"}
+                    onChange={() => setTiming("scheduled")}
+                  />
+                  <span>
+                    <b>Schedule</b>
+                    <small>Publish in your local timezone</small>
+                  </span>
+                </label>
+                {timing === "scheduled" ? (
+                  <label>
+                    Publication date and time
+                    <input
+                      type="datetime-local"
+                      value={scheduledLocal}
+                      min={minimumSchedule}
+                      onChange={(event) =>
+                        setScheduledLocal(event.target.value)
+                      }
+                      required
+                    />
+                    <small>
+                      {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                    </small>
+                  </label>
+                ) : null}
               </fieldset>
             </section>
             <aside className="panel pin-preview">

@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Plus, Search } from "lucide-react";
+import { Copy, ExternalLink, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AppShell } from "../../components/app-shell";
 import {
@@ -10,7 +10,7 @@ import {
 } from "../../components/data-state";
 import { PageHeader } from "../../components/page-header";
 import { usePins } from "../../hooks/use-pins";
-import { readableStatus, relativeDate } from "../../lib/pin-data";
+import { API_URL, readableStatus, relativeDate } from "../../lib/pin-data";
 
 export default function PinsPage() {
   const { pins, loading, problem, reload, signIn } = usePins();
@@ -24,6 +24,27 @@ export default function PinsPage() {
       ),
     [pins, query],
   );
+  async function duplicate(id: string) {
+    const response = await fetch(
+      `${API_URL}/pins/${encodeURIComponent(id)}/duplicate`,
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
+    if (!response.ok) window.alert("The Pin could not be duplicated.");
+    await reload();
+  }
+  async function remove(id: string, title: string) {
+    if (!window.confirm(`Permanently delete “${title || "Untitled Pin"}”?`))
+      return;
+    const response = await fetch(`${API_URL}/pins/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!response.ok) window.alert("The Pin could not be deleted.");
+    await reload();
+  }
   return (
     <AppShell>
       <PageHeader
@@ -86,13 +107,37 @@ export default function PinsPage() {
                   <span className="row-date">
                     Updated {relativeDate(pin.updatedAt)}
                   </span>
-                  <button
-                    type="button"
-                    className="row-menu"
-                    aria-label={`Actions for ${pin.title || "untitled Pin"}`}
-                  >
-                    <MoreHorizontal size={19} aria-hidden="true" />
-                  </button>
+                  <span className="row-actions">
+                    {pin.publishedPin?.pinterestUrl ? (
+                      <a
+                        className="row-menu"
+                        href={pin.publishedPin.pinterestUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label="View published Pin on Pinterest"
+                      >
+                        <ExternalLink size={17} aria-hidden="true" />
+                      </a>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="row-menu"
+                      onClick={() => void duplicate(pin.id)}
+                      aria-label={`Duplicate ${pin.title || "untitled Pin"}`}
+                    >
+                      <Copy size={17} aria-hidden="true" />
+                    </button>
+                    {pin.status !== "PUBLISHED" ? (
+                      <button
+                        type="button"
+                        className="row-menu"
+                        onClick={() => void remove(pin.id, pin.title)}
+                        aria-label={`Delete ${pin.title || "untitled Pin"}`}
+                      >
+                        <Trash2 size={17} aria-hidden="true" />
+                      </button>
+                    ) : null}
+                  </span>
                 </article>
               ))}
             </div>

@@ -35,7 +35,13 @@ describe("claimPublicationJob", () => {
       lockedBy: "worker-a",
     });
     expect(tx.publicationJob.updateMany).toHaveBeenCalledWith({
-      where: { id: "job-1", status: "QUEUED", lockedAt: null },
+      where: {
+        id: "job-1",
+        OR: [
+          { status: "QUEUED", lockedAt: null },
+          { status: "RUNNING", lockedAt: { lt: expect.any(Date) } },
+        ],
+      },
       data: expect.objectContaining({
         status: "RUNNING",
         lockedBy: "worker-a",
@@ -45,6 +51,31 @@ describe("claimPublicationJob", () => {
     expect(tx.publicationAttempt.create).toHaveBeenCalledWith({
       data: { publicationJobId: "job-1", attemptNumber: 2 },
     });
+  });
+
+  it("reclaims a stale running job after a worker restart", async () => {
+    const tx = {
+      publicationJob: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "job-1",
+          pinDraftId: "draft-1",
+          attemptCount: 2,
+        }),
+      },
+      publicationAttempt: { create: vi.fn().mockResolvedValue({}) },
+    };
+    transaction.mockImplementation((callback: (client: typeof tx) => unknown) =>
+      callback(tx),
+    );
+    await expect(
+      claimPublicationJob("job-1", "worker-after-restart"),
+    ).resolves.toMatchObject({
+      attemptNumber: 2,
+      lockedBy: "worker-after-restart",
+    });
+    const where = tx.publicationJob.updateMany.mock.calls[0]![0].where;
+    expect(where.OR[1]).toMatchObject({ status: "RUNNING" });
   });
 
   it("returns null when another worker already owns the job", async () => {

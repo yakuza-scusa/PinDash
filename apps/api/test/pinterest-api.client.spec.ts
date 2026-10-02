@@ -3,6 +3,10 @@ import {
   PinterestApiClient,
   PinterestApiError,
 } from "../src/pinterest/pinterest-api.client";
+import {
+  sanitizedImagePinRequest,
+  sanitizedImagePinResponse,
+} from "./fixtures/pinterest-image-pin";
 
 describe("PinterestApiClient", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -32,6 +36,31 @@ describe("PinterestApiClient", () => {
         url: "https://media.example.com/image.jpg",
       },
     });
+  });
+
+  it("passes the sanitized image-Pin integration contract", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(sanitizedImagePinResponse), {
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(sanitizedImagePinResponse), {
+          status: 200,
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new PinterestApiClient();
+    const created = await client.createImagePin(
+      "sanitized-access-token",
+      sanitizedImagePinRequest,
+    );
+    const confirmed = await client.getPin("sanitized-access-token", created.id);
+    expect(confirmed).toEqual(sanitizedImagePinResponse);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toContain("customer");
   });
 
   it("classifies rate limits without exposing the upstream response body", async () => {

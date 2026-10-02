@@ -122,12 +122,12 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Add title and description character counters
 - [x] Load an existing draft into the composer
 - [x] Implement debounced autosave
-- [ ] Connect the Drafts page to the draft API
-- [ ] Connect the Pins page to publication history
-- [ ] Add duplicate-draft action
-- [ ] Add delete-draft action and confirmation
-- [ ] Add timezone-aware schedule fields
-- [ ] Add server-side schedule validation
+- [x] Connect the Drafts page to the draft API
+- [x] Connect the Pins page to publication history
+- [x] Add duplicate-draft action
+- [x] Add delete-draft action and confirmation
+- [x] Add timezone-aware schedule fields
+- [x] Add server-side schedule validation
 
 ## 7. Media library and uploads
 
@@ -181,7 +181,7 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Add exponential backoff with jitter
 - [x] Reconcile unknown outcomes before retrying
 - [x] Add dead-letter handling
-- [ ] Add image-Pin integration tests with sanitized fixtures
+- [x] Add image-Pin integration tests with sanitized fixtures
 - [ ] Complete one real Trial/Sandbox Pin creation
 
 ## 10. Scheduling and worker
@@ -189,15 +189,15 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Create independent worker application
 - [x] Define scheduled job database fields and indexes
 - [x] Add BullMQ and Redis connection
-- [ ] Add scheduler that releases due database jobs
-- [ ] Add worker job locking
-- [ ] Implement timezone and daylight-saving conversion
-- [ ] Add scheduled Pin cancellation
-- [ ] Add safe retry and reconciliation flow
-- [ ] Add dead-letter queue
-- [ ] Connect calendar to scheduled Pin API data
-- [ ] Add schedule, reschedule, and cancel confirmation dialogs
-- [ ] Test worker restart and duplicate-prevention behavior
+- [x] Add scheduler that releases due database jobs
+- [x] Add worker job locking
+- [x] Implement timezone and daylight-saving conversion
+- [x] Add scheduled Pin cancellation
+- [x] Add safe retry and reconciliation flow
+- [x] Add dead-letter queue
+- [x] Connect calendar to scheduled Pin API data
+- [x] Add schedule, reschedule, and cancel confirmation dialogs
+- [x] Test worker restart and duplicate-prevention behavior
 
 ## 11. Notifications and audit
 
@@ -230,12 +230,12 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 
 ## 13. Observability and production readiness
 
-- [ ] Add structured JSON logging
-- [ ] Add request correlation IDs
-- [ ] Add sensitive-data log redaction
+- [x] Add structured JSON logging
+- [x] Add request correlation IDs
+- [x] Add sensitive-data log redaction
 - [ ] Add OpenTelemetry traces
 - [ ] Add Sentry error reporting
-- [ ] Add API and worker health checks
+- [x] Add API and worker health checks
 - [ ] Monitor OAuth failures and token refresh failures
 - [ ] Monitor Pinterest 401, 403, 429, and 5xx responses
 - [ ] Monitor queue depth and oldest waiting job

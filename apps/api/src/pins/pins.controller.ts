@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -104,5 +105,23 @@ export class PinsController {
         });
       throw error;
     }
+  }
+
+  @Post(":id/duplicate")
+  duplicate(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+    return this.pins.duplicate(this.userId(request), id);
+  }
+
+  @Post(":id/cancel-schedule")
+  cancelSchedule(
+    @Req() request: AuthenticatedRequest,
+    @Param("id") id: string,
+  ) {
+    return this.pins.cancelSchedule(this.userId(request), id);
+  }
+
+  @Delete(":id")
+  remove(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
+    return this.pins.remove(this.userId(request), id);
   }
 }

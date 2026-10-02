@@ -12,6 +12,11 @@ export interface PinRecord {
   scheduleTimezone: string | null;
   createdAt: string;
   updatedAt: string;
+  publishedPin?: {
+    pinterestPinId: string;
+    pinterestUrl: string | null;
+    publishedAt: string;
+  } | null;
 }
 
 export type DataProblem = "offline" | "expired" | "error";

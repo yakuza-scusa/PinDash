@@ -1094,6 +1094,12 @@ h1 {
   border: 0;
   border-radius: 8px;
 }
+
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
 .draft-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

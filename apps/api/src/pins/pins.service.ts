@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { database, PinStatus, type Prisma } from "@pindash/database";
+import { createHash } from "node:crypto";
 import {
   ApprovedPinSnapshotSchema,
   type ApprovePin,
@@ -14,6 +15,25 @@ import {
 
 @Injectable()
 export class PinsService {
+  private validateSchedule(
+    scheduledForUtc?: string | null,
+    scheduleTimezone?: string | null,
+  ): void {
+    if (!scheduledForUtc && !scheduleTimezone) return;
+    if (!scheduledForUtc || !scheduleTimezone)
+      throw new BadRequestException(
+        "A scheduled Pin requires both a date and timezone",
+      );
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: scheduleTimezone }).format();
+    } catch {
+      throw new BadRequestException("Invalid IANA schedule timezone");
+    }
+    if (new Date(scheduledForUtc).getTime() <= Date.now() + 60_000)
+      throw new BadRequestException(
+        "Scheduled publication must be at least one minute in the future",
+      );
+  }
   private async requireWorkspace(
     userId: string,
     workspaceId: string,
@@ -48,6 +68,7 @@ export class PinsService {
   }
 
   async create(userId: string, input: SavePinDraft) {
+    this.validateSchedule(input.scheduledForUtc, input.scheduleTimezone);
     await this.requireWorkspace(userId, input.workspaceId);
     await this.requireResources(
       input.workspaceId,
@@ -92,6 +113,13 @@ export class PinsService {
         version: true,
         createdAt: true,
         updatedAt: true,
+        publishedPin: {
+          select: {
+            pinterestPinId: true,
+            pinterestUrl: true,
+            publishedAt: true,
+          },
+        },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -207,7 +235,27 @@ export class PinsService {
           contentSnapshot: snapshot,
         },
       });
-      await tx.pinDraft.update({ where: { id }, data: { status: "APPROVED" } });
+      const scheduled = Boolean(
+        draft.scheduledForUtc && draft.scheduledForUtc > new Date(),
+      );
+      await tx.pinDraft.update({
+        where: { id },
+        data: { status: scheduled ? PinStatus.SCHEDULED : PinStatus.APPROVED },
+      });
+      if (scheduled && draft.scheduledForUtc) {
+        const idempotencyKey = createHash("sha256")
+          .update(`pin-approval:${approval.id}`)
+          .digest("hex");
+        await tx.publicationJob.upsert({
+          where: { idempotencyKey },
+          update: { runAt: draft.scheduledForUtc, status: "PENDING" },
+          create: {
+            pinDraftId: id,
+            idempotencyKey,
+            runAt: draft.scheduledForUtc,
+          },
+        });
+      }
       await tx.auditEvent.create({
         data: {
           workspaceId: draft.workspaceId,
@@ -222,7 +270,7 @@ export class PinsService {
         approvalId: approval.id,
         draftId: id,
         draftVersion: draft.version,
-        status: "APPROVED",
+        status: scheduled ? "SCHEDULED" : "APPROVED",
         approvedAt: approval.approvedAt,
       };
     });
@@ -233,6 +281,15 @@ export class PinsService {
       where: { id, workspace: { members: { some: { userId } } } },
     });
     if (!draft) throw new NotFoundException("Draft not found");
+    if ("scheduledForUtc" in input || "scheduleTimezone" in input)
+      this.validateSchedule(
+        "scheduledForUtc" in input
+          ? (input.scheduledForUtc ?? null)
+          : draft.scheduledForUtc?.toISOString(),
+        "scheduleTimezone" in input
+          ? (input.scheduleTimezone ?? null)
+          : draft.scheduleTimezone,
+      );
     await this.requireResources(
       draft.workspaceId,
       input.connectionId,
@@ -265,6 +322,66 @@ export class PinsService {
     return database.$transaction(async (tx) => {
       await tx.pinApproval.deleteMany({ where: { pinDraftId: id } });
       return tx.pinDraft.update({ where: { id }, data });
+    });
+  }
+
+  async duplicate(userId: string, id: string) {
+    const source = await database.pinDraft.findFirst({
+      where: { id, workspace: { members: { some: { userId } } } },
+    });
+    if (!source) throw new NotFoundException("Draft not found");
+    return database.pinDraft.create({
+      data: {
+        workspaceId: source.workspaceId,
+        createdByUserId: userId,
+        connectionId: source.connectionId,
+        mediaAssetId: source.mediaAssetId,
+        boardId: source.boardId,
+        boardSectionId: source.boardSectionId,
+        title: source.title ? `${source.title} (copy)`.slice(0, 100) : "",
+        description: source.description,
+        altText: source.altText,
+        destinationUrl: source.destinationUrl,
+      },
+    });
+  }
+
+  async remove(userId: string, id: string) {
+    const draft = await database.pinDraft.findFirst({
+      where: { id, workspace: { members: { some: { userId } } } },
+    });
+    if (!draft) throw new NotFoundException("Draft not found");
+    if (draft.status === PinStatus.PUBLISHED)
+      throw new BadRequestException("Published Pins cannot be deleted");
+    await database.pinDraft.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async cancelSchedule(userId: string, id: string) {
+    const draft = await database.pinDraft.findFirst({
+      where: { id, workspace: { members: { some: { userId } } } },
+    });
+    if (!draft) throw new NotFoundException("Draft not found");
+    if (draft.status !== PinStatus.SCHEDULED)
+      throw new BadRequestException("Only a scheduled Pin can be cancelled");
+    return database.$transaction(async (tx) => {
+      await tx.publicationJob.updateMany({
+        where: { pinDraftId: id, status: "PENDING" },
+        data: { status: "CANCELLED" },
+      });
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: draft.workspaceId,
+          actorUserId: userId,
+          action: "pin.schedule_cancelled",
+          entityType: "PinDraft",
+          entityId: id,
+        },
+      });
+      return tx.pinDraft.update({
+        where: { id },
+        data: { status: PinStatus.CANCELLED },
+      });
     });
   }
 }

@@ -3,7 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { transaction } = vi.hoisted(() => ({ transaction: vi.fn() }));
 vi.mock("@pindash/database", () => ({
   database: { $transaction: transaction },
-  PinStatus: { DRAFT: "DRAFT" },
+  PinStatus: {
+    DRAFT: "DRAFT",
+    APPROVED: "APPROVED",
+    SCHEDULED: "SCHEDULED",
+    PUBLISHED: "PUBLISHED",
+    CANCELLED: "CANCELLED",
+  },
 }));
 
 import { PinsService } from "../src/pins/pins.service";

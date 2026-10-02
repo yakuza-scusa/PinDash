@@ -14,7 +14,10 @@ vi.mock("@pindash/database", () => ({
 import { PublishingService } from "../src/publishing/publishing.service";
 
 describe("PublishingService", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.SESSION_SECRET = "test-session-secret-at-least-32-characters";
+  });
 
   it("creates one deterministic publication job and queues it", async () => {
     const job = {
@@ -49,15 +52,20 @@ describe("PublishingService", () => {
       callback(tx),
     );
     const queue = { enqueue: vi.fn().mockResolvedValue(undefined) };
-    const result = await new PublishingService(queue as never).publishNow(
-      "user-1",
-      "draft-1",
-    );
+    const result = await new PublishingService(
+      queue as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    ).publishNow("user-1", "draft-1");
     expect(result).toMatchObject({
       publicationJobId: "job-1",
       status: "QUEUED",
     });
-    expect(queue.enqueue).toHaveBeenCalledWith("job-1");
+    expect(queue.enqueue).toHaveBeenCalledWith(
+      "job-1",
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+    );
     const create = tx.publicationJob.upsert.mock.calls[0]![0].create;
     expect(create.idempotencyKey).toMatch(/^[a-f0-9]{64}$/);
     expect(tx.auditEvent.create).toHaveBeenCalledOnce();
@@ -77,7 +85,12 @@ describe("PublishingService", () => {
     transaction.mockImplementation((callback: (client: typeof tx) => unknown) =>
       callback(tx),
     );
-    const service = new PublishingService({ enqueue: vi.fn() } as never);
+    const service = new PublishingService(
+      { enqueue: vi.fn() } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
     await expect(service.publishNow("user-1", "draft-1")).rejects.toThrow(
       "latest draft version",
     );

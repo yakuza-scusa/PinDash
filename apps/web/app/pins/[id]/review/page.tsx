@@ -77,8 +77,22 @@ export default function ReviewPage() {
       },
     );
     if (response.ok) {
-      setMessage("Pin approved. It is now locked to this reviewed version.");
-      setTimeout(() => router.push("/pins"), 900);
+      setMessage("Pin approved. Adding it to the secure publishing queue…");
+      const publishResponse = await fetch(
+        `${API_URL}/pins/${encodeURIComponent(id)}/publish`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!publishResponse.ok) {
+        const payload = (await publishResponse.json().catch(() => null)) as {
+          message?: string;
+        } | null;
+        setMessage(
+          payload?.message ?? "The Pin was approved but could not be queued.",
+        );
+        setApproving(false);
+        return;
+      }
+      router.push(`/pins/${encodeURIComponent(id)}/publication`);
     } else {
       const payload = (await response.json().catch(() => null)) as {
         message?: string;
@@ -193,7 +207,7 @@ export default function ReviewPage() {
               onClick={() => void approve()}
             >
               <CheckCircle2 size={17} aria-hidden="true" />
-              {approving ? "Approving…" : "Approve this Pin"}
+              {approving ? "Approving and queueing…" : "Approve and publish"}
             </button>
             {message ? (
               <p className="approval-message" role="status">

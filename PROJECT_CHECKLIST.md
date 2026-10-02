@@ -172,9 +172,9 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Route immediate publishing through the job queue
 - [x] Lock publication jobs to prevent duplicates
 - [x] Revalidate approval snapshot before publishing
-- [ ] Store Pinterest Pin ID and safe result metadata
-- [ ] Retrieve the Pin after creation to confirm success
-- [ ] Display publishing progress and result page
+- [x] Store Pinterest Pin ID and safe result metadata
+- [x] Retrieve the Pin after creation to confirm success
+- [x] Display publishing progress and result page
 - [ ] Display safe, actionable publishing errors
 - [ ] Classify retryable and permanent errors
 - [ ] Respect `Retry-After` and rate-limit headers
@@ -188,7 +188,7 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 
 - [x] Create independent worker application
 - [x] Define scheduled job database fields and indexes
-- [ ] Add BullMQ and Redis connection
+- [x] Add BullMQ and Redis connection
 - [ ] Add scheduler that releases due database jobs
 - [ ] Add worker job locking
 - [ ] Implement timezone and daylight-saving conversion

@@ -114,6 +114,14 @@ export class MediaService {
     return { assetId: asset.id, uploadUrl, expiresInSeconds: 300 };
   }
 
+  async createRetrievalUrl(storageKey: string): Promise<string> {
+    return getSignedUrl(
+      this.s3,
+      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      { expiresIn: 15 * 60 },
+    );
+  }
+
   async completeUpload(userId: string, id: string) {
     const asset = await database.mediaAsset.findFirst({
       where: {

@@ -26,10 +26,13 @@ export class PublishQueueService implements OnModuleDestroy {
     });
   }
 
-  async enqueue(publicationJobId: string): Promise<void> {
+  async enqueue(
+    publicationJobId: string,
+    executionToken: string,
+  ): Promise<void> {
     await this.queue.add(
       "publish-pin",
-      { publicationJobId },
+      { publicationJobId, executionToken },
       { jobId: publicationJobId },
     );
   }

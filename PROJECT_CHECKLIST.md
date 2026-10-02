@@ -278,6 +278,6 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Shared contract tests pass
 - [x] Token encryption test passes
 - [x] All current Next.js routes build successfully
-- [ ] Runtime database integration tests pass
+- [x] Runtime database integration tests pass
 - [ ] Pinterest Sandbox/Trial end-to-end test passes
 - [x] Full approval-MVP browser test passes

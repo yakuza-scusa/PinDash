@@ -175,10 +175,10 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Store Pinterest Pin ID and safe result metadata
 - [x] Retrieve the Pin after creation to confirm success
 - [x] Display publishing progress and result page
-- [ ] Display safe, actionable publishing errors
-- [ ] Classify retryable and permanent errors
-- [ ] Respect `Retry-After` and rate-limit headers
-- [ ] Add exponential backoff with jitter
+- [x] Display safe, actionable publishing errors
+- [x] Classify retryable and permanent errors
+- [x] Respect `Retry-After` and rate-limit headers
+- [x] Add exponential backoff with jitter
 - [ ] Reconcile unknown outcomes before retrying
 - [ ] Add dead-letter handling
 - [ ] Add image-Pin integration tests with sanitized fixtures

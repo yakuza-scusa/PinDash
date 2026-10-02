@@ -2,6 +2,10 @@ import { Worker, type Job } from "bullmq";
 import { hostname } from "node:os";
 import { loadValidatedApprovalSnapshot } from "./approval-snapshot";
 import { claimPublicationJob } from "./publication-lock";
+import {
+  PublicationExecutionError,
+  publicationRetryDelay,
+} from "./retry-policy";
 
 export const PUBLISH_QUEUE = "pinterest-publication";
 
@@ -37,11 +41,33 @@ export function createPublicationWorker(redisUrl: string, apiUrl: string) {
           signal: AbortSignal.timeout(60_000),
         },
       );
-      if (!response.ok)
-        throw new Error(`Publication execution failed (${response.status})`);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          retryAfterSeconds?: unknown;
+        };
+        const retryAfterSeconds =
+          typeof body.retryAfterSeconds === "number"
+            ? body.retryAfterSeconds
+            : undefined;
+        throw new PublicationExecutionError(response.status, retryAfterSeconds);
+      }
       return response.json();
     },
-    { connection: connection(redisUrl), concurrency: 4 },
+    {
+      connection: connection(redisUrl),
+      concurrency: 4,
+      settings: {
+        backoffStrategy: (attemptsMade, type, error) => {
+          if (type !== "pindash") throw new Error(`Unknown backoff ${type}`);
+          return publicationRetryDelay(
+            attemptsMade,
+            error instanceof PublicationExecutionError
+              ? error.retryAfterMs
+              : undefined,
+          );
+        },
+      },
+    },
   );
 }
 

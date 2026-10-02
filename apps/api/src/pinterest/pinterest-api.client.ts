@@ -39,6 +39,14 @@ function errorKind(status: number): PinterestErrorKind {
   return "unknown";
 }
 
+function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  if (/^\d+$/.test(value)) return Number(value);
+  const date = Date.parse(value);
+  if (!Number.isFinite(date)) return undefined;
+  return Math.max(0, Math.ceil((date - Date.now()) / 1_000));
+}
+
 @Injectable()
 export class PinterestApiClient {
   private readonly baseUrl = (
@@ -94,13 +102,12 @@ export class PinterestApiClient {
     const requestId =
       response.headers.get("x-pinterest-request-id") ?? undefined;
     if (!response.ok) {
-      const retryAfter = response.headers.get("retry-after");
       throw new PinterestApiError(
         `Pinterest request failed with status ${response.status}`,
         errorKind(response.status),
         response.status,
         requestId,
-        retryAfter && /^\d+$/.test(retryAfter) ? Number(retryAfter) : undefined,
+        parseRetryAfter(response.headers.get("retry-after")),
       );
     }
     const parsed = PinterestPinResultSchema.safeParse(await response.json());

@@ -60,4 +60,26 @@ describe("PinterestApiClient", () => {
       "sensitive upstream details",
     );
   });
+
+  it("parses an HTTP-date Retry-After header", async () => {
+    vi.setSystemTime(new Date("2026-10-02T12:00:00Z"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("", {
+          status: 503,
+          headers: { "retry-after": "Fri, 02 Oct 2026 12:00:45 GMT" },
+        }),
+      ),
+    );
+    const error = await new PinterestApiClient()
+      .getPin("secret", "pin-123")
+      .catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      kind: "temporary",
+      retryable: true,
+      retryAfterSeconds: 45,
+    });
+    vi.useRealTimers();
+  });
 });

@@ -247,33 +247,81 @@ export class PublishingService {
       });
       return { pinterestPinId: confirmed.id, pinterestUrl, publishedAt };
     } catch (error) {
-      const code = error instanceof PinterestApiError ? error.kind : "unknown";
+      const pinterestError =
+        error instanceof PinterestApiError ? error : undefined;
+      const code = pinterestError?.kind ?? "unknown";
+      const retryable =
+        Boolean(pinterestError?.retryable) &&
+        job.attemptCount < job.maxAttempts;
+      const safeMessage = this.safePublishingError(code, retryable);
+      const unknownOutcome = !pinterestError;
+      const jobStatus = unknownOutcome
+        ? JobStatus.UNKNOWN_RESULT
+        : retryable
+          ? JobStatus.QUEUED
+          : JobStatus.FAILED;
+      const pinStatus = unknownOutcome
+        ? PinStatus.UNKNOWN_RESULT
+        : code === "authentication"
+          ? PinStatus.CONNECTION_REQUIRED
+          : retryable
+            ? PinStatus.QUEUED
+            : PinStatus.FAILED;
       await database.$transaction(async (tx) => {
         await tx.publicationJob.update({
           where: { id: job.id },
           data: {
-            status: JobStatus.FAILED,
+            status: jobStatus,
             lockedAt: null,
             lockedBy: null,
             lastErrorCode: code,
-            lastErrorMessage: "Pinterest could not publish this Pin",
+            lastErrorMessage: safeMessage,
           },
         });
         await tx.publicationAttempt.updateMany({
           where: { publicationJobId: job.id, attemptNumber: job.attemptCount },
           data: {
             finishedAt: new Date(),
-            outcome: "FAILED",
+            outcome: retryable ? "RETRYING" : jobStatus,
+            httpStatus: pinterestError?.status ?? null,
+            pinterestRequestId: pinterestError?.requestId ?? null,
             errorCode: code,
-            errorMessage: "Pinterest could not publish this Pin",
+            errorMessage: safeMessage,
           },
         });
         await tx.pinDraft.update({
           where: { id: job.pinDraftId },
-          data: { status: PinStatus.FAILED },
+          data: { status: pinStatus },
         });
       });
-      throw new BadGatewayException("Pinterest could not publish this Pin");
+      if (retryable)
+        throw new ServiceUnavailableException({
+          message: safeMessage,
+          code,
+          retryable: true,
+          retryAfterSeconds: pinterestError?.retryAfterSeconds,
+        });
+      throw new BadGatewayException({ message: safeMessage, code });
+    }
+  }
+
+  private safePublishingError(code: string, retrying: boolean): string {
+    if (retrying)
+      return code === "rate_limit"
+        ? "Pinterest is rate limiting requests. PinDash will retry automatically."
+        : "Pinterest is temporarily unavailable. PinDash will retry automatically.";
+    switch (code) {
+      case "authentication":
+        return "The Pinterest connection has expired or was revoked. Reconnect the account and try again.";
+      case "permission":
+        return "Pinterest denied this action. Check the account permissions and selected board.";
+      case "validation":
+        return "Pinterest rejected the Pin details. Review the board, media, text, and destination link.";
+      case "rate_limit":
+      case "temporary":
+        return "Pinterest remained unavailable after several attempts. Try again later.";
+      default:
+        return "The publication result could not be confirmed. Check Pinterest before trying again.";
     }
   }
 

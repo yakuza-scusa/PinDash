@@ -19,7 +19,7 @@ export class PublishQueueService implements OnModuleDestroy {
       },
       defaultJobOptions: {
         attempts: 5,
-        backoff: { type: "exponential", delay: 5_000 },
+        backoff: { type: "pindash", delay: 5_000 },
         removeOnComplete: 1_000,
         removeOnFail: 5_000,
       },

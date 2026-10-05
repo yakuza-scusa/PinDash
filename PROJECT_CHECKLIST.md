@@ -288,5 +288,6 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Token encryption test passes
 - [x] All current Next.js routes build successfully
 - [x] Runtime database integration tests pass
+- [x] Resend domain and passwordless email delivery integration pass
 - [ ] Pinterest Sandbox/Trial end-to-end test passes
 - [x] Full approval-MVP browser test passes

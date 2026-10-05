@@ -277,7 +277,7 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Configure the Supabase Session pooler and S3 credentials
 - [x] Apply migrations and seed data to Supabase
 - [x] Verify upload, retrieval, and deletion against Supabase Storage
-- [ ] Configure a hosted Redis-compatible service for BullMQ
+- [x] Configure and verify Upstash Redis over TLS for BullMQ
 
 ## Validation record
 

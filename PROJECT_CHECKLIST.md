@@ -270,6 +270,15 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Implement secure image upload
 - [ ] Build explicit review and immediate Pin publishing
 
+## 16. Supabase free hosting
+
+- [x] Prepare a secret-safe Supabase PostgreSQL and Storage configuration
+- [ ] Create the Supabase free project and private `pindash-media` bucket
+- [ ] Configure the Supabase Session pooler and S3 credentials
+- [ ] Apply migrations and seed data to Supabase
+- [ ] Verify upload, preview, and deletion against Supabase Storage
+- [ ] Configure a hosted Redis-compatible service for BullMQ
+
 ## Validation record
 
 - [x] Monorepo production build passes

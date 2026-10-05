@@ -65,3 +65,7 @@ npm run build
 - Development, staging/Sandbox, and production credentials remain separate.
 
 See [docs/architecture.md](docs/architecture.md) and [docs/decisions](docs/decisions) for the detailed design.
+
+For the zero-cost hosted database and media configuration, see
+[docs/supabase-free-deployment.md](docs/supabase-free-deployment.md) and
+[.env.supabase.example](.env.supabase.example).

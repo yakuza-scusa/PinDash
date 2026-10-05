@@ -1,0 +1,8 @@
+[build]
+command = "npm run build -w @pindash/contracts && npm run build -w @pindash/web"
+publish = "apps/web/.next"
+
+[build.environment]
+NODE_VERSION = "22"
+NPM_VERSION = "10"
+

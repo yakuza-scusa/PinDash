@@ -14,6 +14,7 @@
   "scripts": {
     "build": "npm run build -w @pindash/contracts && npm run build -w @pindash/database && npm run build -w @pindash/api && npm run build -w @pindash/worker && npm run build -w @pindash/web",
     "dev": "dotenv -e .env -- concurrently -n web,api,worker -c cyan,green,magenta \"npm run dev -w @pindash/web\" \"npm run dev -w @pindash/api\" \"npm run dev -w @pindash/worker\"",
+    "dev:supabase": "dotenv -e .env.supabase.local -- concurrently -n web,api,worker -c cyan,green,magenta \"npm run dev -w @pindash/web\" \"npm run dev -w @pindash/api\" \"npm run dev -w @pindash/worker\"",
     "dev:infra": "docker compose up -d postgres redis minio minio-init",
     "dev:infra:down": "docker compose down",
     "format": "prettier --write .",
@@ -26,7 +27,10 @@
     "db:migrate": "dotenv -e .env -- npm run migrate:dev -w @pindash/database",
     "db:migrate:deploy": "dotenv -e .env -- npm run migrate:deploy -w @pindash/database",
     "db:seed": "dotenv -e .env -- npm run seed -w @pindash/database",
-    "db:studio": "dotenv -e .env -- npm run studio -w @pindash/database"
+    "db:studio": "dotenv -e .env -- npm run studio -w @pindash/database",
+    "db:supabase:migrate": "dotenv -e .env.supabase.local -- npm run migrate:deploy -w @pindash/database",
+    "db:supabase:seed": "dotenv -e .env.supabase.local -- npm run seed -w @pindash/database",
+    "db:supabase:studio": "dotenv -e .env.supabase.local -- npm run studio -w @pindash/database"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

@@ -10,6 +10,7 @@ import {
   Unplug,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AppShell } from "../../components/app-shell";
 import { DataSkeleton } from "../../components/data-state";
 
@@ -33,6 +34,7 @@ interface Connection {
 }
 
 export default function ConnectionsPage() {
+  const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,10 @@ export default function ConnectionsPage() {
   }, [load]);
 
   async function createDemoSession() {
+    if (process.env.NODE_ENV === "production") {
+      router.push("/signin");
+      return;
+    }
     setLoading(true);
     const response = await fetch(`${API_URL}/auth/development-session`, {
       method: "POST",
@@ -181,18 +187,24 @@ export default function ConnectionsPage() {
           <span className="connection-hero-icon">
             <LockKeyhole size={27} />
           </span>
-          <h2>Start your secure local session</h2>
+          <h2>
+            {process.env.NODE_ENV === "production"
+              ? "Sign in to PinDash"
+              : "Start your secure local session"}
+          </h2>
           <p>
-            This development-only step creates the owner and workspace used for
-            your Trial-access recording. It is automatically disabled in
-            production.
+            {process.env.NODE_ENV === "production"
+              ? "Use a secure email link to access your workspace and Pinterest connections."
+              : "This development-only step creates the owner and workspace used for your Trial-access recording."}
           </p>
           <button
             className="button button-primary"
             type="button"
             onClick={() => void createDemoSession()}
           >
-            Start local demo
+            {process.env.NODE_ENV === "production"
+              ? "Continue to sign in"
+              : "Start local demo"}
           </button>
         </section>
       ) : null}

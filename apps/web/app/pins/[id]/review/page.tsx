@@ -128,7 +128,7 @@ export default function ReviewPage() {
         <ProblemState
           problem={problem}
           onRetry={() => void load()}
-          onSignIn={() => router.push("/connections")}
+          onSignIn={() => router.push("/signin")}
         />
       ) : null}
       {!loading && !problem && draft ? (

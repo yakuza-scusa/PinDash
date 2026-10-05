@@ -280,6 +280,10 @@ export default function NewPinPage() {
     scheduledLocal,
   ]);
   async function startSession() {
+    if (process.env.NODE_ENV === "production") {
+      router.push("/signin");
+      return;
+    }
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/auth/development-session`, {

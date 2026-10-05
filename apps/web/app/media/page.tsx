@@ -110,7 +110,7 @@ export default function MediaPage() {
         <ProblemState
           problem={problem}
           onRetry={() => void load()}
-          onSignIn={() => router.push("/connections")}
+          onSignIn={() => router.push("/signin")}
         />
       ) : null}
       {!loading && !problem ? (

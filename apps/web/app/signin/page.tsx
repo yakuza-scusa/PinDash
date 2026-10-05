@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { API_URL } from "../../lib/pin-data";
 
@@ -49,6 +50,8 @@ export default function SignInPage() {
           <input
             required
             type="email"
+            autoComplete="email"
+            inputMode="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -60,12 +63,19 @@ export default function SignInPage() {
             checked={accepted}
             onChange={(event) => setAccepted(event.target.checked)}
           />
-          <span>I accept the Terms of Service and Privacy Policy.</span>
+          <span>
+            I accept the <Link href="/terms">Terms of Service</Link> and{" "}
+            <Link href="/privacy">Privacy Policy</Link>.
+          </span>
         </label>
         <button className="button button-primary" disabled={busy} type="submit">
           {busy ? "Sending…" : "Email me a sign-in link"}
         </button>
-        {message ? <p role="status">{message}</p> : null}
+        {message ? (
+          <p role="status" aria-live="polite">
+            {message}
+          </p>
+        ) : null}
         {previewUrl ? (
           <a href={previewUrl}>Open local development sign-in link</a>
         ) : null}

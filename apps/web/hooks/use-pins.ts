@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   loadPins,
   startDevelopmentSession,
@@ -9,6 +10,7 @@ import {
 } from "../lib/pin-data";
 
 export function usePins() {
+  const router = useRouter();
   const [pins, setPins] = useState<PinRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<DataProblem | null>(null);
@@ -56,6 +58,10 @@ export function usePins() {
   }, [reload]);
 
   const signIn = useCallback(async () => {
+    if (process.env.NODE_ENV === "production") {
+      router.push("/signin");
+      return;
+    }
     setLoading(true);
     try {
       await startDevelopmentSession();
@@ -64,7 +70,7 @@ export function usePins() {
       setProblem("error");
       setLoading(false);
     }
-  }, [reload]);
+  }, [reload, router]);
 
   return { pins, loading, problem, reload, signIn };
 }

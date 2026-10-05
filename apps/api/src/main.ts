@@ -8,7 +8,8 @@ import { correlationId, safeRequestPath } from "./observability";
 import { csrfAllowed, RequestRateLimiter } from "./request-security";
 
 async function bootstrap(): Promise<void> {
-  const trustedProxies = (process.env.TRUST_PROXY ?? "")
+  const trustProxySetting = (process.env.TRUST_PROXY ?? "").trim();
+  const trustedProxies = trustProxySetting
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
@@ -16,7 +17,12 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      trustProxy: trustedProxies.length > 0 ? trustedProxies : false,
+      trustProxy:
+        trustProxySetting.toLowerCase() === "true"
+          ? true
+          : trustedProxies.length > 0
+            ? trustedProxies
+            : false,
     }),
   );
 

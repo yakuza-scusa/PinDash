@@ -1,0 +1,13 @@
+{
+	email admin@comparatif-devis.fr
+}
+
+api.comparatif-devis.fr {
+	encode zstd gzip
+	reverse_proxy api:4000
+	header -Server
+	log {
+		output stdout
+		format json
+	}
+}

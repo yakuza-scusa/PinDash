@@ -28,3 +28,6 @@ client calls versioned endpoints directly.
 Secrets such as database credentials, Redis credentials, Pinterest secrets,
 email API keys, session secrets, and encryption keys must remain in provider
 secret stores and must never be committed.
+
+See [Oracle VM deployment](oracle-deployment.md) for the API, worker, HTTPS,
+Cloudflare DNS, and final Netlify configuration runbook.

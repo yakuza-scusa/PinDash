@@ -279,6 +279,19 @@ Use this file as the source of truth for V1 progress. Mark a task complete only 
 - [x] Verify upload, retrieval, and deletion against Supabase Storage
 - [x] Configure and verify Upstash Redis over TLS for BullMQ
 
+## 17. Public API and worker deployment
+
+- [x] Create production API and worker container targets
+- [x] Add a hardened production Compose stack
+- [x] Add Caddy HTTPS configuration for `api.comparatif-devis.fr`
+- [x] Add a secret-safe Oracle VM environment template
+- [x] Document Oracle VM, Cloudflare DNS, Netlify, and Pinterest setup
+- [x] Build and smoke-test the production API and worker containers
+- [ ] Create the Oracle VM and point `api.comparatif-devis.fr` to its public IP
+- [ ] Deploy the Compose stack and verify the public HTTPS readiness endpoint
+- [ ] Configure Netlify with the public API URL and redeploy
+- [ ] Configure and test the exact public Pinterest OAuth callback
+
 ## Validation record
 
 - [x] Monorepo production build passes

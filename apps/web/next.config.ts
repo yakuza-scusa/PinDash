@@ -11,6 +11,8 @@ function configuredApiOrigin(): string {
 }
 
 const apiOrigin = configuredApiOrigin();
+const developmentScriptPolicy =
+  process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -23,7 +25,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: `default-src 'self'; img-src 'self' data: blob: ${apiOrigin}; connect-src 'self' ${apiOrigin}; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
+            value: `default-src 'self'; img-src 'self' data: blob: ${apiOrigin}; connect-src 'self' ${apiOrigin}; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'${developmentScriptPolicy}; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'`,
           },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {

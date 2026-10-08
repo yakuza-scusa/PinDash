@@ -84,9 +84,9 @@ export class AuthController {
     try {
       const session = await this.sessions.consumePasswordlessToken(token ?? "");
       this.setSessionCookie(reply, session);
-      return reply.redirect(`${webUrl}/?status=verified`);
+      return reply.status(302).redirect(`${webUrl}/?status=verified`);
     } catch {
-      return reply.redirect(`${webUrl}/signin?error=invalid-link`);
+      return reply.status(302).redirect(`${webUrl}/signin?error=invalid-link`);
     }
   }
 

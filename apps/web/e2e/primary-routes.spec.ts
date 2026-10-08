@@ -57,7 +57,16 @@ async function mockApi(page: Page) {
   );
 }
 
-test.beforeEach(async ({ page }) => mockApi(page));
+test.beforeEach(async ({ page, context }) => {
+  await context.addCookies([
+    {
+      name: "pindash_session",
+      value: "browser-test-session",
+      url: "http://127.0.0.1:3000",
+    },
+  ]);
+  await mockApi(page);
+});
 
 for (const [path, heading] of [
   ["/", "Publishing dashboard"],
@@ -105,6 +114,36 @@ test("Pins can be searched from API-backed results", async ({ page }) => {
   await expect(page.getByText("Home office lighting ideas")).toBeHidden();
 });
 
+test("protected routes redirect visitors without a session", async ({
+  page,
+  context,
+}) => {
+  await context.clearCookies();
+  await page.goto("/pins");
+  await expect(page).toHaveURL(/\/signin\?next=%2Fpins$/);
+  await expect(
+    page.getByRole("heading", { name: "Sign in securely" }),
+  ).toBeVisible();
+});
+
+test("sign-in and registration are separate public flows", async ({
+  page,
+  context,
+}) => {
+  await context.clearCookies();
+  await page.goto("/signin");
+  await expect(page.getByLabel("Password")).toHaveAttribute(
+    "autocomplete",
+    "current-password",
+  );
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(page).toHaveURL(/\/signup$/);
+  await expect(
+    page.getByRole("heading", { name: "Create your account" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Confirm password")).toBeVisible();
+});
+
 test("expired sessions show a recovery action", async ({ page }) => {
   await page.route("**/api/v1/pins", (route) =>
     route.fulfill({ status: 401, body: "{}" }),
@@ -114,7 +153,7 @@ test("expired sessions show a recovery action", async ({ page }) => {
     page.getByRole("heading", { name: "Your session has expired" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Start local session" }),
+    page.getByRole("button", { name: "Sign in again" }),
   ).toBeVisible();
 });
 

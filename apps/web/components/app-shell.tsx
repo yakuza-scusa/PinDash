@@ -18,8 +18,9 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { API_URL } from "../lib/pin-data";
 
 const primaryNavigation = [
   { label: "Overview", href: "/", icon: LayoutDashboard },
@@ -38,9 +39,34 @@ const secondaryNavigation = [
 
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`${API_URL}/auth/session`, {
+      credentials: "include",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          const next = encodeURIComponent(pathname);
+          router.replace(`/signin?next=${next}`);
+          return;
+        }
+        setSessionChecked(true);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
+        router.replace("/signin?error=session-check");
+      });
+    return () => controller.abort();
+  }, [pathname, router]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -54,6 +80,14 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
       document.body.style.overflow = "";
     };
   }, [menuOpen]);
+
+  if (!sessionChecked) {
+    return (
+      <main className="auth-page" aria-busy="true">
+        <p role="status">Checking your secure session…</p>
+      </main>
+    );
+  }
 
   return (
     <div className="app-shell">

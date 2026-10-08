@@ -1792,7 +1792,8 @@ h1 {
   gap: 0.5rem;
   font-weight: 600;
 }
-.auth-card input[type="email"] {
+.auth-card input[type="email"],
+.auth-card input[type="password"] {
   padding: 0.8rem;
   border: 1px solid #cfd4df;
   border-radius: 10px;

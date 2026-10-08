@@ -61,7 +61,7 @@ export function ProblemState({
       ? "You’re offline"
       : "We couldn’t load your Pins";
   const description = expired
-    ? "Start a new local session to continue working in this development build."
+    ? "Sign in again to continue securely."
     : offline
       ? "Check your connection. PinDash will retry automatically when you’re back online."
       : "The API may be unavailable. Try again in a moment.";
@@ -82,7 +82,7 @@ export function ProblemState({
         ) : (
           <RefreshCw size={17} aria-hidden="true" />
         )}
-        {expired ? "Start local session" : "Try again"}
+        {expired ? "Sign in again" : "Try again"}
       </button>
     </div>
   );

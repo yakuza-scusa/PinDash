@@ -10,6 +10,11 @@ import { database, MembershipRole } from "@pindash/database";
 import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomBytes } from "node:crypto";
 import type { AuthenticatedUser } from "./auth.types";
+import {
+  hashPassword,
+  validatePassword,
+  verifyPassword,
+} from "./password-auth";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -114,6 +119,135 @@ export class SessionService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     current.count += 1;
+  }
+
+  async registerWithPassword(
+    emailInput: string,
+    password: string,
+    legalAccepted: boolean,
+    ip: string,
+  ): Promise<{ delivered: true }> {
+    const email = emailInput.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email))
+      throw new BadRequestException("Enter a valid email address");
+    if (!legalAccepted)
+      throw new BadRequestException("Legal acceptance is required");
+    try {
+      validatePassword(password);
+    } catch (error) {
+      throw new BadRequestException(
+        error instanceof Error ? error.message : "Password is invalid",
+      );
+    }
+    this.rateLimit(`register-ip:${ip}`);
+    this.rateLimit(`register-email:${email}`);
+    const existing = await database.user.findUnique({ where: { email } });
+    if (existing?.passwordHash && existing.emailVerifiedAt) {
+      throw new BadRequestException(
+        "An account already exists. Sign in instead.",
+      );
+    }
+    const passwordHash = await hashPassword(password);
+    const token = randomBytes(32).toString("base64url");
+    await database.$transaction(async (tx) => {
+      const user = await tx.user.upsert({
+        where: { email },
+        update: { passwordHash, legalAcceptedAt: new Date() },
+        create: { email, passwordHash, legalAcceptedAt: new Date() },
+      });
+      await tx.passwordlessToken.deleteMany({ where: { userId: user.id } });
+      await tx.passwordlessToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: this.hashToken(token),
+          expiresAt: new Date(Date.now() + 15 * 60_000),
+        },
+      });
+    });
+    await this.deliverAuthLink(
+      email,
+      token,
+      "Verify your PinDash account",
+      "Verify email and continue",
+    );
+    return { delivered: true };
+  }
+
+  async loginWithPassword(
+    emailInput: string,
+    password: string,
+    ip: string,
+  ): Promise<{ token: string; expiresAt: Date }> {
+    const email = emailInput.trim().toLowerCase();
+    this.rateLimit(`login-ip:${ip}`);
+    this.rateLimit(`login-email:${email}`);
+    const user = await database.user.findUnique({
+      where: { email },
+      include: { memberships: true },
+    });
+    const valid = await verifyPassword(password, user?.passwordHash);
+    if (!valid || !user || user.deletedAt) {
+      throw new UnauthorizedException("Email or password is incorrect");
+    }
+    if (!user.emailVerifiedAt) {
+      throw new UnauthorizedException("Verify your email before signing in");
+    }
+    const membership = user.memberships[0];
+    if (!membership) {
+      throw new UnauthorizedException("Account setup is incomplete");
+    }
+    const token = randomBytes(32).toString("base64url");
+    const expiresAt = new Date(Date.now() + this.ttlDays * DAY_MS);
+    await database.$transaction(async (tx) => {
+      await tx.session.deleteMany({ where: { userId: user.id } });
+      await tx.session.create({
+        data: { userId: user.id, tokenHash: this.hashToken(token), expiresAt },
+      });
+      await tx.auditEvent.create({
+        data: {
+          workspaceId: membership.workspaceId,
+          actorUserId: user.id,
+          action: "auth.password_signed_in",
+          entityType: "User",
+          entityId: user.id,
+        },
+      });
+    });
+    return { token, expiresAt };
+  }
+
+  private async deliverAuthLink(
+    email: string,
+    token: string,
+    subject: string,
+    action: string,
+  ): Promise<{ previewUrl?: string }> {
+    const apiUrl = process.env.PUBLIC_API_URL ?? "http://localhost:4000";
+    const callbackUrl = `${apiUrl}/api/v1/auth/passwordless/callback?token=${encodeURIComponent(token)}`;
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      if (process.env.NODE_ENV === "production")
+        throw new ServiceUnavailableException(
+          "Email delivery is not configured",
+        );
+      return { previewUrl: callbackUrl };
+    }
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${resendKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        from: process.env.AUTH_EMAIL_FROM ?? "PinDash <auth@pindash.app>",
+        to: [email],
+        subject,
+        html: `<p>This single-use link expires in 15 minutes.</p><p><a href="${callbackUrl}">${action}</a></p>`,
+      }),
+    });
+    if (!response.ok)
+      throw new ServiceUnavailableException("Email delivery failed");
+    return {};
   }
 
   async requestPasswordlessLink(

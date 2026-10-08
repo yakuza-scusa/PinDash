@@ -104,6 +104,17 @@ export default function ReviewPage() {
       setApproving(false);
     }
   }
+  const missing = draft
+    ? ([
+        !draft.mediaAsset && "image",
+        !draft.title.trim() && "title",
+        !draft.description.trim() && "description",
+        !draft.altText?.trim() && "alt text",
+        !draft.connection && "Pinterest account",
+        !draft.boardId && "board",
+      ].filter(Boolean) as string[])
+    : [];
+
   return (
     <AppShell>
       <div className="page-heading">
@@ -203,12 +214,21 @@ export default function ReviewPage() {
             <button
               className="button button-primary"
               type="button"
-              disabled={!confirmed || approving}
+              disabled={!confirmed || approving || missing.length > 0}
               onClick={() => void approve()}
             >
               <CheckCircle2 size={17} aria-hidden="true" />
               {approving ? "Approving and queueing…" : "Approve and publish"}
             </button>
+            {missing.length ? (
+              <div className="approval-requirements" role="alert">
+                <strong>Return to the editor to finish this Pin</strong>
+                <span>Missing: {missing.join(", ")}.</span>
+                <a href={`/pins/new?draft=${encodeURIComponent(id)}`}>
+                  Complete missing details
+                </a>
+              </div>
+            ) : null}
             {message ? (
               <p className="approval-message" role="status">
                 {message}

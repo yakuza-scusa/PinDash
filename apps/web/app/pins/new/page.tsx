@@ -63,6 +63,7 @@ export default function NewPinPage() {
     [draftId, setDraftId] = useState<string | null>(null),
     [mediaAssetId, setMediaAssetId] = useState<string | null>(null),
     [previewUrl, setPreviewUrl] = useState<string | null>(null),
+    [mediaName, setMediaName] = useState(""),
     [uploading, setUploading] = useState(false);
   const hydrated = useRef(false);
   useEffect(() => {
@@ -305,6 +306,7 @@ export default function NewPinPage() {
     try {
       const asset = await uploadMedia(file, workspaceId);
       setMediaAssetId(asset.id);
+      setMediaName(asset.originalFilename);
       setPreviewUrl((current) => {
         if (current) URL.revokeObjectURL(current);
         return URL.createObjectURL(file);
@@ -318,6 +320,15 @@ export default function NewPinPage() {
       setUploading(false);
     }
   }
+  const missingRequirements = [
+    !mediaAssetId && "image",
+    !title.trim() && "title",
+    !description.trim() && "description",
+    !altText.trim() && "alt text",
+    !connectionId && "account",
+    !boardId && "board",
+  ].filter(Boolean) as string[];
+
   return (
     <AppShell>
       <div className="editor-heading">
@@ -388,7 +399,22 @@ export default function NewPinPage() {
                   }
                 />
               </label>
-              <label>
+              <div
+                className={`upload-feedback ${mediaAssetId ? "ready" : "waiting"}`}
+              >
+                <span className="upload-feedback-dot" />
+                <span>
+                  <strong>
+                    {mediaAssetId ? "Image ready" : "Image required"}
+                  </strong>
+                  <small>
+                    {mediaAssetId
+                      ? `${mediaName || "Secure upload"} is attached to this draft.`
+                      : "Upload and validate an image before review."}
+                  </small>
+                </span>
+              </div>
+              <label className="modern-field">
                 Title <span>{title.length} / 100</span>
                 <input
                   value={title}
@@ -397,7 +423,7 @@ export default function NewPinPage() {
                   placeholder="Add a clear, compelling title"
                 />
               </label>
-              <label>
+              <label className="modern-field">
                 Description <span>{description.length} / 800</span>
                 <textarea
                   value={description}
@@ -407,7 +433,7 @@ export default function NewPinPage() {
                   placeholder="Tell people what this Pin is about"
                 />
               </label>
-              <label>
+              <label className="modern-field">
                 Alt text <span>Accessibility</span>
                 <input
                   value={altText}
@@ -425,7 +451,7 @@ export default function NewPinPage() {
                   <p>Choose the Pinterest account and live board.</p>
                 </div>
               </div>
-              <label>
+              <label className="modern-field select-field">
                 Pinterest account
                 <select
                   value={connectionId}
@@ -439,7 +465,7 @@ export default function NewPinPage() {
                   ))}
                 </select>
               </label>
-              <label>
+              <label className="modern-field select-field">
                 Pinterest board
                 <input
                   type="search"
@@ -482,7 +508,7 @@ export default function NewPinPage() {
                   {loadingBoards ? "Loading…" : "Load more boards"}
                 </button>
               ) : null}
-              <label>
+              <label className="modern-field">
                 Destination URL
                 <input
                   value={destinationUrl}
@@ -536,6 +562,20 @@ export default function NewPinPage() {
                   </label>
                 ) : null}
               </fieldset>
+              <div
+                className={`composer-readiness ${missingRequirements.length ? "incomplete" : "complete"}`}
+              >
+                <strong>
+                  {missingRequirements.length
+                    ? `${missingRequirements.length} item${missingRequirements.length === 1 ? "" : "s"} left before review`
+                    : "Ready for final review"}
+                </strong>
+                <span>
+                  {missingRequirements.length
+                    ? `Add ${missingRequirements.join(", ")}.`
+                    : "Your Pin has every required publishing detail."}
+                </span>
+              </div>
             </section>
             <aside className="panel pin-preview">
               <span>Preview</span>

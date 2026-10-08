@@ -145,9 +145,54 @@ test("Member invitations use a secure setup flow", async ({ page }) => {
   await page.getByRole("button", { name: "Add new member" }).click();
   const dialog = page.getByRole("dialog", { name: "Add a new member" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByText("creates their own private password")).toBeVisible();
+  await expect(
+    dialog.getByText("creates their own private password"),
+  ).toBeVisible();
   await expect(dialog.getByLabel("Email address")).toBeVisible();
   await expect(dialog.getByLabel("Role")).toHaveValue("EDITOR");
+});
+
+test("Pin composer confirms a completed secure image upload", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/media/upload-intents", (route) =>
+    route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        assetId: "media-1",
+        uploadUrl: "http://127.0.0.1:3000/fake-storage-upload",
+      }),
+    }),
+  );
+  await page.route("http://127.0.0.1:3000/fake-storage-upload", (route) =>
+    route.fulfill({ status: 200, body: "" }),
+  );
+  await page.route("**/api/v1/media/media-1/complete", (route) =>
+    route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "media-1",
+        originalFilename: "demo.png",
+        mimeType: "image/png",
+        byteSize: "128",
+        width: 600,
+        height: 900,
+        status: "READY",
+      }),
+    }),
+  );
+  await page.goto("/pins/new");
+  await page.getByLabel("Choose Pin image").setInputFiles({
+    name: "demo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("89504e470d0a1a0a", "hex"),
+  });
+  await expect(page.getByText("Image ready")).toBeVisible();
+  await expect(
+    page.getByText("demo.png is attached to this draft."),
+  ).toBeVisible();
 });
 
 test("Log out revokes the API session", async ({ page }) => {

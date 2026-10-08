@@ -96,6 +96,19 @@ export class MediaService {
 
   async createUploadIntent(userId: string, input: CreateUploadIntent) {
     await this.requireWorkspace(userId, input.workspaceId);
+    const endpoint = process.env.S3_ENDPOINT ?? "http://localhost:9000";
+    if (
+      process.env.NODE_ENV === "production" &&
+      (!endpoint.startsWith("https://") ||
+        endpoint.includes("localhost") ||
+        !process.env.S3_ACCESS_KEY ||
+        !process.env.S3_SECRET_KEY ||
+        !process.env.S3_BUCKET)
+    ) {
+      throw new ServiceUnavailableException(
+        "Secure media storage is not configured for production",
+      );
+    }
     const extension = extname(input.filename)
       .toLowerCase()
       .replace(/[^.a-z0-9]/g, "")

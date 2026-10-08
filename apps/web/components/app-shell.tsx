@@ -8,6 +8,7 @@ import {
   FileText,
   Image,
   LayoutDashboard,
+  LogOut,
   Menu,
   Pin,
   Plus,
@@ -40,11 +41,29 @@ const secondaryNavigation = [
 export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
   const pathname = usePathname();
   const router = useRouter();
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  async function logout() {
+    setSigningOut(true);
+    setLogoutError("");
+    try {
+      const response = await fetch(`${API_URL}/auth/session`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Sign out failed");
+      router.replace("/signin");
+      router.refresh();
+    } catch {
+      setLogoutError("Could not sign out. Please try again.");
+      setSigningOut(false);
+    }
+  }
   useEffect(() => {
     const controller = new AbortController();
     void fetch(`${API_URL}/auth/session`, {
@@ -164,8 +183,25 @@ export function AppShell({ children }: Readonly<{ children: ReactNode }>) {
                 </li>
               );
             })}
+            <li>
+              <button
+                className="nav-link nav-button"
+                type="button"
+                disabled={signingOut}
+                onClick={() => void logout()}
+              >
+                <LogOut size={18} aria-hidden="true" />
+                {signingOut ? "Signing out…" : "Log out"}
+              </button>
+            </li>
           </ul>
         </nav>
+
+        {logoutError ? (
+          <p className="sidebar-error" role="alert">
+            {logoutError}
+          </p>
+        ) : null}
 
         <div className="sidebar-footer">
           <div className="user-card">

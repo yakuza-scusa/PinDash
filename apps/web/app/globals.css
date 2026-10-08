@@ -210,6 +210,24 @@ textarea:focus-visible {
   background: rgb(255 255 255 / 10%);
   box-shadow: inset 3px 0 var(--primary);
 }
+.nav-button {
+  width: 100%;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+.nav-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.sidebar-error {
+  margin: 10px;
+  color: #fecdd3;
+  font-size: 0.75rem;
+}
 .nav-count {
   min-width: 24px;
   padding: 1px 7px;
@@ -1245,6 +1263,34 @@ h1 {
 }
 .settings-form {
   padding-bottom: 22px;
+}
+.settings-member,
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 22px;
+}
+.settings-member > span:nth-child(2),
+.settings-toggle > span {
+  display: grid;
+  gap: 3px;
+}
+.settings-member small,
+.settings-toggle small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.settings-member .status-pill {
+  margin-left: auto;
+}
+.settings-toggle {
+  justify-content: space-between;
+}
+.settings-toggle input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
 }
 .settings-form > label,
 .editor-form > label {

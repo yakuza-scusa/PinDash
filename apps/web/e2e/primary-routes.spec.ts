@@ -96,6 +96,40 @@ for (const [path, heading] of [
   });
 }
 
+test("Settings sections follow their links", async ({ page }) => {
+  await page.goto("/settings#members");
+  await expect(
+    page.getByRole("heading", { name: "Workspace members" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Members" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+
+  await page
+    .getByRole("navigation", { name: "Settings sections" })
+    .getByRole("link", { name: "Notifications" })
+    .click();
+  await expect(page).toHaveURL(/\/settings#notifications$/);
+  await expect(
+    page.getByRole("heading", { name: "Notification preferences" }),
+  ).toBeVisible();
+});
+
+test("Log out revokes the API session", async ({ page }) => {
+  await page.goto("/settings");
+  if ((page.viewportSize()?.width ?? 1280) < 920) {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+  }
+  const requestPromise = page.waitForRequest(
+    (request) =>
+      request.url().endsWith("/api/v1/auth/session") &&
+      request.method() === "DELETE",
+  );
+  await page.getByRole("button", { name: "Log out" }).click();
+  await requestPromise;
+});
+
 test("responses include production security headers", async ({ page }) => {
   const response = await page.goto("/product");
   expect(response?.headers()["content-security-policy"]).toContain(

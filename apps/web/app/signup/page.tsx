@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { API_URL } from "../../lib/pin-data";
 
 export default function SignUpPage() {
@@ -12,6 +12,15 @@ export default function SignUpPage() {
   const [message, setMessage] = useState("");
   const [complete, setComplete] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [inviteToken, setInviteToken] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    // Read the browser-only invitation parameters after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInviteToken(params.get("invite") ?? "");
+    setEmail(params.get("email") ?? "");
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -26,7 +35,12 @@ export default function SignUpPage() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, legalAccepted: accepted }),
+        body: JSON.stringify({
+          email,
+          password,
+          legalAccepted: accepted,
+          inviteToken: inviteToken || undefined,
+        }),
       });
       const result = (await response.json()) as { message?: string };
       if (!response.ok)
@@ -48,7 +62,7 @@ export default function SignUpPage() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={(event) => void submit(event)}>
         <p className="eyebrow">PinDash</p>
-        <h1>Create your account</h1>
+        <h1>{inviteToken ? "Accept your invitation" : "Create your account"}</h1>
         <p>
           Already registered? <Link href="/signin">Sign in</Link>.
         </p>

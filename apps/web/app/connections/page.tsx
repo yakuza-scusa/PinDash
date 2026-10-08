@@ -121,9 +121,10 @@ export default function ConnectionsPage() {
       { credentials: "include" },
     );
     if (!response.ok) {
-      setError(
-        "Pinterest OAuth is not configured. Add your app credentials to .env.",
-      );
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+      };
+      setError(result.message ?? "Could not start Pinterest authorization.");
       setLoading(false);
       return;
     }

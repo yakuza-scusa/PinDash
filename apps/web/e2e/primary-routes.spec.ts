@@ -49,6 +49,30 @@ async function mockApi(page: Page) {
       }),
     }),
   );
+  await page.route("**/api/v1/auth/workspaces/w1/members", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        members: [
+          {
+            userId: "u1",
+            email: "alex@example.com",
+            displayName: "Alex Morgan",
+            role: "OWNER",
+          },
+        ],
+        invitations: [],
+      }),
+    }),
+  );
+  await page.route("**/api/v1/notifications/preferences", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ notifyInApp: true, notifyByEmail: false }),
+    }),
+  );
   await page.route("**/api/v1/pinterest/connections", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: "[]" }),
   );
@@ -114,6 +138,16 @@ test("Settings sections follow their links", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Notification preferences" }),
   ).toBeVisible();
+});
+
+test("Member invitations use a secure setup flow", async ({ page }) => {
+  await page.goto("/settings#members");
+  await page.getByRole("button", { name: "Add new member" }).click();
+  const dialog = page.getByRole("dialog", { name: "Add a new member" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("creates their own private password")).toBeVisible();
+  await expect(dialog.getByLabel("Email address")).toBeVisible();
+  await expect(dialog.getByLabel("Role")).toHaveValue("EDITOR");
 });
 
 test("Log out revokes the API session", async ({ page }) => {

@@ -2015,3 +2015,57 @@ h1 {
     padding: 1.5rem;
   }
 }
+
+.settings-message,
+.settings-save-state {
+  margin: 14px 22px;
+  color: #18724b;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+.settings-member.pending { background: #fffaf0; border-radius: 10px; padding: 12px; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(14 17 27 / 58%);
+  backdrop-filter: blur(5px);
+}
+.invite-modal { position: relative; width: min(100%, 480px); padding: 28px; box-shadow: 0 24px 80px rgb(5 8 18 / 28%); }
+.invite-modal h2 { margin: 5px 0 8px; }
+.invite-modal > p:not(.eyebrow) { color: var(--text-secondary); }
+.invite-modal label { display: grid; gap: 7px; margin-top: 18px; font-size: 0.8rem; font-weight: 700; }
+.invite-modal input,
+.invite-modal select { width: 100%; padding: 11px 12px; border: 1px solid #d8dae2; border-radius: 9px; background: white; }
+.invite-modal .button { margin-top: 22px; width: 100%; justify-content: center; }
+.modal-close { position: absolute; top: 18px; right: 18px; }
+.notification-settings { overflow: hidden; }
+.notification-option {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin: 14px 22px;
+  padding: 16px;
+  border: 1px solid #ececf1;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff 0%, #fff8fa 100%);
+  cursor: pointer;
+}
+.notification-option-icon { display: grid; place-items: center; width: 44px; height: 44px; color: #ba1738; background: #fff0f3; border-radius: 12px; }
+.notification-option-copy { display: grid; gap: 4px; }
+.notification-option-copy small { color: var(--muted); line-height: 1.45; }
+.switch-control { position: relative; width: 46px; height: 26px; flex: 0 0 auto; }
+.switch-control input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-control > span { position: absolute; inset: 0; border-radius: 999px; background: #c7cad3; transition: 0.18s ease; }
+.switch-control > span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 2px 5px rgb(0 0 0 / 22%); transition: 0.18s ease; }
+.switch-control input:checked + span { background: #c91d40; }
+.switch-control input:checked + span::after { transform: translateX(20px); }
+.switch-control input:focus-visible + span { outline: 3px solid rgb(201 29 64 / 25%); outline-offset: 2px; }
+@media (max-width: 620px) {
+  .notification-option { grid-template-columns: 40px minmax(0, 1fr) auto; margin-inline: 14px; padding: 13px; }
+  .notification-option-icon { width: 40px; height: 40px; }
+}

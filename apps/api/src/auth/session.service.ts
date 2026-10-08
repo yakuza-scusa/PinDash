@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -126,6 +127,7 @@ export class SessionService {
     password: string,
     legalAccepted: boolean,
     ip: string,
+    inviteToken?: string,
   ): Promise<{ delivered: true }> {
     const email = emailInput.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(email))
@@ -141,6 +143,18 @@ export class SessionService {
     }
     this.rateLimit(`register-ip:${ip}`);
     this.rateLimit(`register-email:${email}`);
+    if (inviteToken) {
+      const invitation = await database.workspaceInvitation.findUnique({
+        where: { tokenHash: this.hashToken(inviteToken) },
+      });
+      if (
+        !invitation ||
+        invitation.acceptedAt ||
+        invitation.expiresAt <= new Date() ||
+        invitation.email !== email
+      )
+        throw new BadRequestException("Invitation is invalid or expired");
+    }
     const existing = await database.user.findUnique({ where: { email } });
     if (existing?.passwordHash && existing.emailVerifiedAt) {
       throw new BadRequestException(
@@ -331,6 +345,29 @@ export class SessionService {
         where: { userId: record.userId },
       });
       if (!membership) {
+        const invitation = await tx.workspaceInvitation.findFirst({
+          where: {
+            email: record.user.email,
+            acceptedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        if (invitation) {
+          membership = await tx.workspaceMember.create({
+            data: {
+              workspaceId: invitation.workspaceId,
+              userId: record.userId,
+              role: invitation.role,
+            },
+          });
+          await tx.workspaceInvitation.update({
+            where: { id: invitation.id },
+            data: { acceptedAt: new Date() },
+          });
+        }
+      }
+      if (!membership) {
         const workspace = await tx.workspace.create({
           data: {
             name: "My Pinterest workspace",
@@ -373,6 +410,104 @@ export class SessionService {
     await database.session.deleteMany({
       where: { tokenHash: this.hashToken(token) },
     });
+  }
+
+  async listWorkspaceMembers(userId: string, workspaceId: string) {
+    await this.requireWorkspaceOwner(userId, workspaceId);
+    const [members, invitations] = await Promise.all([
+      database.workspaceMember.findMany({
+        where: { workspaceId },
+        include: { user: { select: { email: true, displayName: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
+      database.workspaceInvitation.findMany({
+        where: { workspaceId, acceptedAt: null, expiresAt: { gt: new Date() } },
+        select: { id: true, email: true, role: true, expiresAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+    return {
+      members: members.map(({ user, ...member }) => ({ ...member, ...user })),
+      invitations,
+    };
+  }
+
+  async inviteWorkspaceMember(
+    userId: string,
+    workspaceId: string,
+    emailInput: string,
+    role: "APPROVER" | "EDITOR",
+  ) {
+    await this.requireWorkspaceOwner(userId, workspaceId);
+    const email = emailInput.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email))
+      throw new BadRequestException("Enter a valid email address");
+    const existingUser = await database.user.findUnique({ where: { email } });
+    if (existingUser?.emailVerifiedAt) {
+      await database.workspaceMember.upsert({
+        where: { workspaceId_userId: { workspaceId, userId: existingUser.id } },
+        update: { role },
+        create: { workspaceId, userId: existingUser.id, role },
+      });
+      await this.deliverWorkspaceInvitation(email, undefined, true);
+      return { invited: true, existingAccount: true };
+    }
+    const token = randomBytes(32).toString("base64url");
+    await database.workspaceInvitation.deleteMany({
+      where: { workspaceId, email, acceptedAt: null },
+    });
+    await database.workspaceInvitation.create({
+      data: {
+        workspaceId,
+        email,
+        role,
+        tokenHash: this.hashToken(token),
+        invitedByUserId: userId,
+        expiresAt: new Date(Date.now() + 7 * DAY_MS),
+      },
+    });
+    await this.deliverWorkspaceInvitation(email, token, false);
+    return { invited: true, existingAccount: false };
+  }
+
+  private async requireWorkspaceOwner(userId: string, workspaceId: string) {
+    const membership = await database.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId } },
+    });
+    if (membership?.role !== MembershipRole.OWNER)
+      throw new ForbiddenException("Only workspace owners can manage members");
+  }
+
+  private async deliverWorkspaceInvitation(
+    email: string,
+    token: string | undefined,
+    existingAccount: boolean,
+  ): Promise<void> {
+    const resendKey = process.env.RESEND_API_KEY;
+    if (!resendKey) {
+      if (process.env.NODE_ENV === "production")
+        throw new ServiceUnavailableException("Email delivery is not configured");
+      return;
+    }
+    const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
+    const url = existingAccount
+      ? `${webUrl}/signin`
+      : `${webUrl}/signup?invite=${encodeURIComponent(token ?? "")}&email=${encodeURIComponent(email)}`;
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${resendKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        from: process.env.AUTH_EMAIL_FROM ?? "PinDash <auth@pindash.app>",
+        to: [email],
+        subject: "You have been invited to PinDash",
+        html: `<p>You have been invited to a PinDash workspace.</p><p><a href="${url}">${existingAccount ? "Sign in to PinDash" : "Accept invitation and create your password"}</a></p><p>PinDash will never email you a password.</p>`,
+      }),
+    });
+    if (!response.ok)
+      throw new ServiceUnavailableException("Invitation email delivery failed");
   }
 
   async exportUserData(userId: string) {

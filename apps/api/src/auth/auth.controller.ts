@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
   Post,
   Query,
   Req,
@@ -46,7 +47,12 @@ export class AuthController {
   register(
     @Req() request: FastifyRequest,
     @Body()
-    body: { email?: unknown; password?: unknown; legalAccepted?: unknown },
+    body: {
+      email?: unknown;
+      password?: unknown;
+      legalAccepted?: unknown;
+      inviteToken?: unknown;
+    },
   ) {
     if (typeof body?.email !== "string" || typeof body?.password !== "string")
       throw new BadRequestException("Email and password are required");
@@ -55,6 +61,36 @@ export class AuthController {
       body.password,
       body.legalAccepted === true,
       request.ip,
+      typeof body.inviteToken === "string" ? body.inviteToken : undefined,
+    );
+  }
+
+  @Get("workspaces/:workspaceId/members")
+  @UseGuards(SessionGuard)
+  listMembers(
+    @Req() request: AuthenticatedRequest,
+    @Param("workspaceId") workspaceId: string,
+  ) {
+    if (!request.user) throw new UnauthorizedException();
+    return this.sessions.listWorkspaceMembers(request.user.id, workspaceId);
+  }
+
+  @Post("workspaces/:workspaceId/invitations")
+  @UseGuards(SessionGuard)
+  inviteMember(
+    @Req() request: AuthenticatedRequest,
+    @Param("workspaceId") workspaceId: string,
+    @Body() body: { email?: unknown; role?: unknown },
+  ) {
+    if (!request.user) throw new UnauthorizedException();
+    if (typeof body.email !== "string")
+      throw new BadRequestException("Email is required");
+    const role = body.role === "APPROVER" ? "APPROVER" : "EDITOR";
+    return this.sessions.inviteWorkspaceMember(
+      request.user.id,
+      workspaceId,
+      body.email,
+      role,
     );
   }
 

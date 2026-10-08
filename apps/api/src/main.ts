@@ -30,6 +30,8 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: process.env.WEB_URL ?? "http://localhost:3000",
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Correlation-Id"],
   });
 
   const server = app.getHttpAdapter().getInstance();

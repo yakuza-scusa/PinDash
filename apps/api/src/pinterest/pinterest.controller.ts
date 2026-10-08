@@ -66,8 +66,15 @@ export class PinterestController {
     @Res() reply: FastifyReply,
   ) {
     const webUrl = process.env.WEB_URL ?? "http://localhost:3000";
-    if (error) return reply.redirect(`${webUrl}/connections?status=denied`);
-    await this.oauth.complete(code, state);
-    return reply.redirect(`${webUrl}/connections?status=connected`);
+    if (error)
+      return reply.status(302).redirect(`${webUrl}/connections?status=denied`);
+    try {
+      await this.oauth.complete(code, state);
+      return reply
+        .status(302)
+        .redirect(`${webUrl}/connections?status=connected`);
+    } catch {
+      return reply.status(302).redirect(`${webUrl}/connections?status=invalid`);
+    }
   }
 }

@@ -103,13 +103,17 @@ describe("Pinterest OAuth state lifecycle", () => {
 
   it("redirects a Pinterest denial without consuming state", async () => {
     const oauth = { complete: vi.fn() };
-    const reply = { redirect: vi.fn((url: string) => url) };
+    const reply = {
+      status: vi.fn().mockReturnThis(),
+      redirect: vi.fn((url: string) => url),
+    };
     await new PinterestController(oauth as never).callback(
       "",
       "",
       "access_denied",
       reply as never,
     );
+    expect(reply.status).toHaveBeenCalledWith(302);
     expect(reply.redirect).toHaveBeenCalledWith(
       expect.stringContaining("status=denied"),
     );

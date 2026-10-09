@@ -62,7 +62,9 @@ export default function SignUpPage() {
     <main className="auth-page">
       <form className="auth-card" onSubmit={(event) => void submit(event)}>
         <p className="eyebrow">PinDash</p>
-        <h1>{inviteToken ? "Accept your invitation" : "Create your account"}</h1>
+        <h1>
+          {inviteToken ? "Accept your invitation" : "Create your account"}
+        </h1>
         <p>
           Already registered? <Link href="/signin">Sign in</Link>.
         </p>

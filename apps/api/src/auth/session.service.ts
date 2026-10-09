@@ -486,7 +486,9 @@ export class SessionService {
     const resendKey = process.env.RESEND_API_KEY;
     if (!resendKey) {
       if (process.env.NODE_ENV === "production")
-        throw new ServiceUnavailableException("Email delivery is not configured");
+        throw new ServiceUnavailableException(
+          "Email delivery is not configured",
+        );
       return;
     }
     const webUrl = process.env.WEB_URL ?? "http://localhost:3000";

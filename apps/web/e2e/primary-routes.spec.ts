@@ -159,16 +159,10 @@ test("Pin composer confirms a completed secure image upload", async ({
     route.fulfill({
       status: 201,
       contentType: "application/json",
-      body: JSON.stringify({
-        assetId: "media-1",
-        uploadUrl: "http://127.0.0.1:3000/fake-storage-upload",
-      }),
+      body: JSON.stringify({ assetId: "media-1" }),
     }),
   );
-  await page.route("http://127.0.0.1:3000/fake-storage-upload", (route) =>
-    route.fulfill({ status: 200, body: "" }),
-  );
-  await page.route("**/api/v1/media/media-1/complete", (route) =>
+  await page.route("**/api/v1/media/media-1/content", (route) =>
     route.fulfill({
       status: 201,
       contentType: "application/json",

@@ -49,45 +49,30 @@ export async function uploadMedia(
         "Could not prepare secure storage.",
       ),
     );
-  const intent = (await intentResponse.json()) as {
-    assetId: string;
-    uploadUrl: string;
-  };
-  if (
-    window.location.protocol === "https:" &&
-    !intent.uploadUrl.startsWith("https://")
-  )
-    throw new Error(
-      "Media storage returned an insecure URL. Update the production S3 endpoint.",
-    );
+  const intent = (await intentResponse.json()) as { assetId: string };
 
   let uploadResponse: Response;
   try {
-    uploadResponse = await fetch(intent.uploadUrl, {
+    uploadResponse = await fetch(`${API_URL}/media/${intent.assetId}/content`, {
       method: "PUT",
-      headers: { "Content-Type": file.type },
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/octet-stream",
+        "X-File-Content-Type": file.type,
+      },
       body: file,
     });
   } catch {
     throw new Error(
-      "Could not reach media storage. Check its public HTTPS endpoint and CORS policy.",
+      "Could not reach the secure upload service. Check your connection and try again.",
     );
   }
   if (!uploadResponse.ok)
     throw new Error(
-      `Storage rejected the image (${uploadResponse.status}). Check the bucket credentials and CORS policy.`,
-    );
-
-  const completeResponse = await fetch(
-    `${API_URL}/media/${intent.assetId}/complete`,
-    { method: "POST", credentials: "include" },
-  );
-  if (!completeResponse.ok)
-    throw new Error(
       await responseMessage(
-        completeResponse,
-        "The uploaded image failed security validation.",
+        uploadResponse,
+        `The upload service rejected the image (${uploadResponse.status}).`,
       ),
     );
-  return (await completeResponse.json()) as MediaAsset;
+  return (await uploadResponse.json()) as MediaAsset;
 }

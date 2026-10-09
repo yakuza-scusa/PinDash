@@ -320,6 +320,42 @@ export class MediaService {
     }
   }
 
+  async uploadContent(
+    userId: string,
+    id: string,
+    body: Buffer,
+    declaredMime?: string,
+  ) {
+    if (!Buffer.isBuffer(body) || body.byteLength === 0)
+      throw new BadRequestException("The image file is empty");
+    if (body.byteLength > MAX_BYTES)
+      throw new BadRequestException("File exceeds 10 MB");
+    const asset = await database.mediaAsset.findFirst({
+      where: {
+        id,
+        workspace: { members: { some: { userId } } },
+        deletedAt: null,
+      },
+      select: { storageKey: true, mimeType: true, status: true },
+    });
+    if (!asset) throw new NotFoundException("Media asset not found");
+    if (asset.status !== MediaStatus.UPLOADING)
+      throw new BadRequestException("Upload is not awaiting content");
+    if (!declaredMime || declaredMime !== asset.mimeType)
+      throw new BadRequestException(
+        "Image type does not match the upload request",
+      );
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: asset.storageKey,
+        Body: body,
+        ContentType: asset.mimeType,
+      }),
+    );
+    return this.completeUpload(userId, id);
+  }
+
   async preview(userId: string, id: string) {
     const asset = await database.mediaAsset.findFirst({
       where: {

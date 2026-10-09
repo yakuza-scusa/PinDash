@@ -17,6 +17,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
+      bodyLimit: 11 * 1024 * 1024,
       trustProxy:
         trustProxySetting.toLowerCase() === "true"
           ? true
@@ -31,10 +32,24 @@ async function bootstrap(): Promise<void> {
     origin: process.env.WEB_URL ?? "http://localhost:3000",
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Correlation-Id"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Correlation-Id",
+      "X-File-Content-Type",
+    ],
   });
 
   const server = app.getHttpAdapter().getInstance();
+  server.addContentTypeParser(
+    "application/octet-stream",
+    { parseAs: "buffer", bodyLimit: 10 * 1024 * 1024 },
+    (
+      _request: unknown,
+      body: Buffer,
+      done: (error: Error | null, value?: Buffer) => void,
+    ) => done(null, body),
+  );
   const mutationLimiter = new RequestRateLimiter();
   server.addHook(
     "onRequest",

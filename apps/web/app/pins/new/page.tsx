@@ -64,7 +64,8 @@ export default function NewPinPage() {
     [mediaAssetId, setMediaAssetId] = useState<string | null>(null),
     [previewUrl, setPreviewUrl] = useState<string | null>(null),
     [mediaName, setMediaName] = useState(""),
-    [uploading, setUploading] = useState(false);
+    [uploading, setUploading] = useState(false),
+    [uploadError, setUploadError] = useState("");
   const hydrated = useRef(false);
   useEffect(() => {
     async function load() {
@@ -302,6 +303,7 @@ export default function NewPinPage() {
     const workspaceId = session?.user.workspaces[0]?.id;
     if (!file || !workspaceId) return;
     setUploading(true);
+    setUploadError("");
     setStatus("Uploading and validating image…");
     try {
       const asset = await uploadMedia(file, workspaceId);
@@ -313,9 +315,10 @@ export default function NewPinPage() {
       });
       setStatus("Image validated and attached. Saving draft…");
     } catch (error) {
-      setStatus(
-        error instanceof Error ? error.message : "Image upload failed.",
-      );
+      const message =
+        error instanceof Error ? error.message : "Image upload failed.";
+      setUploadError(message);
+      setStatus(message);
     } finally {
       setUploading(false);
     }
@@ -400,17 +403,22 @@ export default function NewPinPage() {
                 />
               </label>
               <div
-                className={`upload-feedback ${mediaAssetId ? "ready" : "waiting"}`}
+                className={`upload-feedback ${mediaAssetId ? "ready" : uploadError ? "error" : "waiting"}`}
               >
                 <span className="upload-feedback-dot" />
                 <span>
                   <strong>
-                    {mediaAssetId ? "Image ready" : "Image required"}
+                    {mediaAssetId
+                      ? "Image ready"
+                      : uploadError
+                        ? "Upload failed"
+                        : "Image required"}
                   </strong>
                   <small>
                     {mediaAssetId
                       ? `${mediaName || "Secure upload"} is attached to this draft.`
-                      : "Upload and validate an image before review."}
+                      : uploadError ||
+                        "Upload and validate an image before review."}
                   </small>
                 </span>
               </div>

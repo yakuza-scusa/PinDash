@@ -2261,6 +2261,12 @@ h1 {
   background: #fff8e7;
   border: 1px solid #f0d897;
 }
+.upload-feedback.error {
+  border-color: #ef9a9a;
+  background: #fff1f1;
+  color: #9f1239;
+}
+
 .upload-feedback.ready {
   color: #176b4c;
   background: #ecfaf4;

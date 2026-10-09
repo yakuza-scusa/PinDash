@@ -7,6 +7,7 @@ import {
   Query,
   Param,
   Post,
+  Put,
   Req,
   Res,
   UnauthorizedException,
@@ -54,6 +55,24 @@ export class MediaController {
   @Post(":id/complete")
   complete(@Req() request: AuthenticatedRequest, @Param("id") id: string) {
     return this.media.completeUpload(this.userId(request), id);
+  }
+
+  @Put(":id/content")
+  uploadContent(
+    @Req()
+    request: AuthenticatedRequest & {
+      body: Buffer;
+      headers: Record<string, string | string[] | undefined>;
+    },
+    @Param("id") id: string,
+  ) {
+    const declaredMime = request.headers["x-file-content-type"];
+    return this.media.uploadContent(
+      this.userId(request),
+      id,
+      request.body,
+      Array.isArray(declaredMime) ? declaredMime[0] : declaredMime,
+    );
   }
 
   @Get(":id/preview")

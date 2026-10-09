@@ -236,7 +236,10 @@ export default function ConnectionsPage() {
             {connections.length ? (
               <ul className="connection-list">
                 {connections.map((connection) => (
-                  <li className="connection-row" key={connection.id}>
+                  <li
+                    className={`connection-row ${!connection.grantedScopes.includes("pins:write") ? "missing-permission" : ""}`}
+                    key={connection.id}
+                  >
                     <span className="pinterest-logo">P</span>
                     <span className="item-copy">
                       <strong className="item-title">
@@ -244,6 +247,12 @@ export default function ConnectionsPage() {
                       </strong>
                       <span className="item-meta">
                         {connection.grantedScopes.join(" · ")}
+                        {!connection.grantedScopes.includes("pins:write") ? (
+                          <span className="connection-permission-warning">
+                            Publishing permission missing — disconnect and
+                            reconnect
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                     <span

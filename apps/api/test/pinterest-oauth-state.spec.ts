@@ -73,7 +73,7 @@ describe("Pinterest OAuth state lifecycle", () => {
               access_token: "access",
               refresh_token: "refresh",
               expires_in: 3600,
-              scope: "boards:read,pins:write",
+              scope: "boards:read,pins:read,pins:write",
             }),
             { status: 200 },
           ),

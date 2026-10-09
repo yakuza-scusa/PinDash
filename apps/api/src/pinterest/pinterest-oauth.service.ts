@@ -32,6 +32,8 @@ const refreshResponseSchema = z.object({
   scope: z.string().optional(),
 });
 
+const REQUIRED_SCOPES = ["boards:read", "pins:read", "pins:write"] as const;
+
 @Injectable()
 export class PinterestOAuthService {
   private readonly boardCache = new Map<
@@ -58,11 +60,14 @@ export class PinterestOAuthService {
       oauthBaseUrl:
         process.env.PINTEREST_OAUTH_BASE_URL ??
         "https://www.pinterest.com/oauth/",
-      scopes: (
-        process.env.PINTEREST_SCOPES ?? "boards:read,pins:read,pins:write"
-      )
-        .split(/[ ,]+/)
-        .filter(Boolean),
+      scopes: Array.from(
+        new Set([
+          ...REQUIRED_SCOPES,
+          ...(process.env.PINTEREST_SCOPES ?? "")
+            .split(/[ ,]+/)
+            .filter(Boolean),
+        ]),
+      ),
     };
   }
 
@@ -139,6 +144,14 @@ export class PinterestOAuthService {
         "Pinterest rejected the authorization code",
       );
     const tokens = tokenResponseSchema.parse(await tokenResponse.json());
+    const grantedScopes = tokens.scope.split(/[ ,]+/).filter(Boolean);
+    const missingScopes = REQUIRED_SCOPES.filter(
+      (scope) => !grantedScopes.includes(scope),
+    );
+    if (missingScopes.length)
+      throw new ForbiddenException(
+        `Pinterest did not grant required permission${missingScopes.length === 1 ? "" : "s"}: ${missingScopes.join(", ")}. Reconnect and approve all requested access.`,
+      );
 
     const accountResponse = await fetch(`${config.apiBaseUrl}/user_account`, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
@@ -166,7 +179,7 @@ export class PinterestOAuthService {
           refreshTokenExpiresAt: tokens.refresh_token_expires_in
             ? new Date(now + tokens.refresh_token_expires_in * 1000)
             : null,
-          grantedScopes: tokens.scope.split(/[ ,]+/).filter(Boolean),
+          grantedScopes,
           status: "CONNECTED",
           lastRefreshedAt: new Date(),
         },
@@ -182,7 +195,7 @@ export class PinterestOAuthService {
           refreshTokenExpiresAt: tokens.refresh_token_expires_in
             ? new Date(now + tokens.refresh_token_expires_in * 1000)
             : null,
-          grantedScopes: tokens.scope.split(/[ ,]+/).filter(Boolean),
+          grantedScopes,
           status: "CONNECTED",
           lastRefreshedAt: new Date(),
         },

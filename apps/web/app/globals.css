@@ -2342,3 +2342,15 @@ h1 {
     margin-inline: 16px;
   }
 }
+
+.connection-row.missing-permission {
+  border-color: #ef9a9a;
+  background: #fff8f8;
+}
+.connection-permission-warning {
+  display: block;
+  margin-top: 0.3rem;
+  color: #b42346;
+  font-size: 0.78rem;
+  font-weight: 700;
+}

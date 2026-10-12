@@ -33,10 +33,12 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 RUN apt-get update \
+  && apt-get upgrade -y \
   && apt-get install --no-install-recommends -y ca-certificates openssl \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system pindash \
-  && useradd --system --gid pindash --home-dir /app pindash
+  && useradd --system --gid pindash --home-dir /app pindash \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 COPY --from=build --chown=pindash:pindash /app/package.json ./package.json
 COPY --from=build --chown=pindash:pindash /app/node_modules ./node_modules

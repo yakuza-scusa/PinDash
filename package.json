@@ -22,6 +22,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run build -w @pindash/contracts && npm run build -w @pindash/database && npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "security:audit": "node scripts/audit-ci.mjs",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "db:generate": "dotenv -e .env -- npm run generate -w @pindash/database",
     "db:migrate": "dotenv -e .env -- npm run migrate:dev -w @pindash/database",
@@ -33,7 +34,7 @@
     "db:supabase:studio": "dotenv -e .env.supabase.local -- npm run studio -w @pindash/database"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.6",
     "dotenv-cli": "^8.0.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2"

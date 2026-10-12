@@ -54,9 +54,16 @@ COPY --from=build --chown=pindash:pindash /app/packages/database/prisma ./packag
 
 USER pindash
 
-FROM runtime AS api
-EXPOSE 4000
-CMD ["node", "apps/api/dist/main.js"]
+FROM runtime AS coolify
 
-FROM runtime AS worker
-CMD ["node", "apps/worker/dist/main.js"]
+ARG PINDASH_SERVICE=api
+ENV PINDASH_SERVICE=$PINDASH_SERVICE
+ENV PORT=4000
+
+RUN case "$PINDASH_SERVICE" in     api|worker) ;;     *) echo "PINDASH_SERVICE must be api or worker" >&2; exit 1 ;;   esac
+
+EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3   CMD if [ "$PINDASH_SERVICE" = "worker" ]; then exit 0; else node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 4000) + '/api/v1/health/ready').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"; fi
+
+CMD ["sh", "-c", "exec node apps/$PINDASH_SERVICE/dist/main.js"]
